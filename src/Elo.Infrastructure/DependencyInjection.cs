@@ -1,5 +1,8 @@
 using Elo.Application.Abstracoes;
+using Elo.Application.Avisos;
 using Elo.Application.ContratoDoApp;
+using Elo.Infrastructure.Avisos;
+using Microsoft.Extensions.Options;
 using Elo.Application.Retencao;
 using Elo.Infrastructure.Persistencia;
 using Elo.Infrastructure.Repositorios;
@@ -50,7 +53,30 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        AdicionarAvisosDoInmet(services);
+
         return services;
+    }
+
+    /// <summary>INMET: cliente HTTP nomeado, cache (singleton) e atualização em segundo plano.</summary>
+    private static void AdicionarAvisosDoInmet(IServiceCollection services)
+    {
+        services.AddOptions<InmetOptions>()
+            .BindConfiguration(InmetOptions.Secao)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient(ClienteDoInmet.NomeDoCliente, (provedor, http) =>
+        {
+            http.Timeout = TimeSpan.FromSeconds(provedor.GetRequiredService<IOptions<InmetOptions>>().Value.TempoLimiteEmSegundos);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("Elo-API/1.0");
+            http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+        });
+
+        services.AddSingleton<IClienteDoInmet, ClienteDoInmet>();
+        services.AddSingleton<FonteDeAvisosEmCache>();
+        services.AddSingleton<IFonteDeAvisos>(provedor => provedor.GetRequiredService<FonteDeAvisosEmCache>());
+        services.AddHostedService<AtualizadorDeAvisosWorker>();
     }
 
     /// <summary>Um caminho relativo do SQLite (ex.: "elo.db") vira absoluto a partir da pasta da API.</summary>

@@ -1,10 +1,14 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Elo.Application.Avisos;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Elo.Tests.Integracao;
 
@@ -13,7 +17,7 @@ namespace Elo.Tests.Integracao;
 /// O Program.cs roda de verdade: migrations, dados simulados, controllers, filtros e serialização.
 /// Cada classe de teste ganha a sua fábrica (e o seu próprio banco).
 /// </summary>
-public sealed class EloApiFactory : WebApplicationFactory<Program>
+public class EloApiFactory : WebApplicationFactory<Program>
 {
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -32,9 +36,20 @@ public sealed class EloApiFactory : WebApplicationFactory<Program>
         {
             ["ConnectionStrings:Elo"] = $"Data Source={_arquivoDoBanco}",
             ["Retencao:Habilitada"] = "false",
-            ["Dispositivos:Chave"] = ChaveDeDispositivo
+            ["Dispositivos:Chave"] = ChaveDeDispositivo,
+            ["Avisos:AtualizacaoAutomatica"] = "false"
         }));
+
+        // Os testes nunca acessam o INMET de verdade: a fonte de avisos é trocada por uma falsa.
+        builder.ConfigureTestServices(servicos =>
+        {
+            servicos.RemoveAll<IFonteDeAvisos>();
+            servicos.AddSingleton(CriarFonteDeAvisos());
+        });
     }
+
+    /// <summary>Padrão: a resposta real do INMET guardada no fixture. Subclasses podem simular o INMET fora do ar.</summary>
+    protected virtual IFonteDeAvisos CriarFonteDeAvisos() => new FonteDeAvisosFalsa(Fixtures.AvisosDoInmet);
 
     protected override void Dispose(bool disposing)
     {

@@ -1,6 +1,6 @@
 # Evidências: fluxo completo da API
 
-Requisições feitas de verdade contra a API rodando localmente (`dotnet run --project src/Elo.Api`), em 10/11/2026 01:04 UTC, a partir do banco recém-criado com os dados simulados. Os ids e horários vêm dessa execução.
+Requisições feitas de verdade contra a API rodando localmente (`dotnet run --project src/Elo.Api`), em 10/11/2026 01:41 UTC, a partir do banco recém-criado com os dados simulados. Os ids e horários vêm dessa execução.
 
 A primeira parte usa as rotas da API completa (`/api/...`). A segunda usa as **rotas do contrato do app** (sem `/api`, como no `docs/contrato-api.md` do repositório elo-app), do jeito que o app e o ESP32 chamam. O mesmo roteiro está em [`src/Elo.Api/Elo.Api.http`](../../src/Elo.Api/Elo.Api.http).
 
@@ -101,7 +101,7 @@ POST /api/chamadas/2/respostas
 Content-Type: application/json
 
 {
-  "idLocal": "3b4e6d4b-2430-44b9-ac82-36df936e6621",
+  "idLocal": "6e20fd7f-02a5-48da-ad94-56d0192330f2",
   "ruaId": 6,
   "situacao": "PrecisoDeAjuda",
   "pessoas": 4,
@@ -114,15 +114,15 @@ Resposta: **HTTP 201** (Location: `http://localhost:5080/api/chamadas/2/resposta
 ```json
 {
   "id": 14,
-  "idLocal": "3b4e6d4b-2430-44b9-ac82-36df936e6621",
+  "idLocal": "6e20fd7f-02a5-48da-ad94-56d0192330f2",
   "chamadaId": 2,
   "ruaId": 6,
   "situacao": "PrecisoDeAjuda",
   "pessoas": 4,
   "observacao": "Família ilhada. Liguem [telefone removido], CPF [CPF removido]",
   "canal": "App",
-  "respondidaEm": "2026-11-10T01:04:17.2833443Z",
-  "recebidaEm": "2026-11-10T01:04:17.2833443Z"
+  "respondidaEm": "2026-11-10T01:41:58.906283Z",
+  "recebidaEm": "2026-11-10T01:41:58.906283Z"
 }
 ```
 
@@ -135,7 +135,7 @@ POST /api/chamadas/2/respostas
 Content-Type: application/json
 
 {
-  "idLocal": "3b4e6d4b-2430-44b9-ac82-36df936e6621",
+  "idLocal": "6e20fd7f-02a5-48da-ad94-56d0192330f2",
   "ruaId": 6,
   "situacao": "PrecisoDeAjuda",
   "pessoas": 4,
@@ -148,15 +148,15 @@ Resposta: **HTTP 200**
 ```json
 {
   "id": 14,
-  "idLocal": "3b4e6d4b-2430-44b9-ac82-36df936e6621",
+  "idLocal": "6e20fd7f-02a5-48da-ad94-56d0192330f2",
   "chamadaId": 2,
   "ruaId": 6,
   "situacao": "PrecisoDeAjuda",
   "pessoas": 4,
   "observacao": "Família ilhada. Liguem [telefone removido], CPF [CPF removido]",
   "canal": "App",
-  "respondidaEm": "2026-11-10T01:04:17.2833443Z",
-  "recebidaEm": "2026-11-10T01:04:17.2833443Z"
+  "respondidaEm": "2026-11-10T01:41:58.906283Z",
+  "recebidaEm": "2026-11-10T01:41:58.906283Z"
 }
 ```
 
@@ -171,7 +171,7 @@ Content-Type: application/json
 {
   "ruaId": 4,
   "situacao": "TudoBem",
-  "respondidaEm": "2026-11-09T22:04:17.000Z"
+  "respondidaEm": "2026-11-09T22:41:58.000Z"
 }
 ```
 
@@ -184,7 +184,7 @@ Resposta: **HTTP 422**
   "status": 422,
   "detail": "A resposta foi dada fora do horário desta chamada.",
   "instance": "/api/chamadas/2/respostas",
-  "traceId": "00-900be28cd04d22d2a5ad0d041fd2459e-89081444f2a700ce-00"
+  "traceId": "00-52e06647204b65ade6dc74c62abe89ef-c4ca343574635395-00"
 }
 ```
 
@@ -213,7 +213,7 @@ Resposta: **HTTP 400**
       "O campo RuaId é obrigatório."
     ]
   },
-  "traceId": "00-f9fdcea0cc77ab7bdb02517e7759ff49-e7d62ab3842bf5f8-00"
+  "traceId": "00-81df684b72b920c578b8fc761fc7be12-cf14971445a3dcd8-00"
 }
 ```
 
@@ -239,7 +239,7 @@ Resposta: **HTTP 201** (Location: `http://localhost:5080/api/chamadas/2/acoes`)
   "chamadaId": 2,
   "ruaId": 7,
   "tipo": "VouAteLa",
-  "registradaEm": "2026-11-10T01:04:17.3279444Z"
+  "registradaEm": "2026-11-10T01:41:58.9812477Z"
 }
 ```
 
@@ -265,8 +265,8 @@ Resposta: **HTTP 201** (Location: `http://localhost:5080/api/sensores/2/leituras
   "nivelCm": 160,
   "limiteCm": 150,
   "acimaDoLimite": true,
-  "medidaEm": "2026-11-10T01:04:17.3464839Z",
-  "recebidaEm": "2026-11-10T01:04:17.3464839Z"
+  "medidaEm": "2026-11-10T01:41:59.0054388Z",
+  "recebidaEm": "2026-11-10T01:41:59.0054388Z"
 }
 ```
 
@@ -303,7 +303,7 @@ Resposta: **HTTP 200**
     "percentualConhecidoEm15Min": 62.5,
     "percentualComResposta": 75,
     "ruasQuePediramAjuda": 3,
-    "minutosAtePrimeiraRespostaEmMedia": 10.4
+    "minutosAtePrimeiraRespostaEmMedia": 10.3
   },
   "ruas (ordem do painel)": [
     "1. Rua do Aguapé: PrecisaDeAjuda",
@@ -331,91 +331,91 @@ Resposta: **HTTP 200**
 ```json
 [
   {
-    "momento": "2026-11-10T00:39:09.7595852Z",
+    "momento": "2026-11-10T01:16:53.7935871Z",
     "tipo": "ChamadaAberta",
     "ruaId": null,
     "rua": null,
     "descricao": "Chamada real aberta pelo aviso INMET: Acumulado de Chuva (perigo potencial)."
   },
   {
-    "momento": "2026-11-10T00:43:09.7595852Z",
+    "momento": "2026-11-10T01:20:53.7935871Z",
     "tipo": "Resposta",
     "ruaId": 3,
     "rua": "Travessa da Taboa",
     "descricao": "Tudo bem, pelo app."
   },
   {
-    "momento": "2026-11-10T00:44:09.7595852Z",
+    "momento": "2026-11-10T01:21:53.7935871Z",
     "tipo": "Resposta",
     "ruaId": 2,
     "rua": "Rua do Aguapé",
     "descricao": "Água subindo, pelo app."
   },
   {
-    "momento": "2026-11-10T00:45:09.7595852Z",
+    "momento": "2026-11-10T01:22:53.7935871Z",
     "tipo": "Resposta",
     "ruaId": 8,
     "rua": "Rua Ipê Amarelo",
     "descricao": "Tudo bem, pelo app."
   },
   {
-    "momento": "2026-11-10T00:47:09.7595852Z",
+    "momento": "2026-11-10T01:24:53.7935871Z",
     "tipo": "Resposta",
     "ruaId": 1,
     "rua": "Rua das Garças",
     "descricao": "Preciso de ajuda (3 pessoa(s)), pelo app."
   },
   {
-    "momento": "2026-11-10T00:49:09.7595852Z",
+    "momento": "2026-11-10T01:26:53.7935871Z",
     "tipo": "AcaoDoCoordenador",
     "ruaId": 1,
     "rua": "Rua das Garças",
     "descricao": "Coordenação marcou \"Vou até lá\"."
   },
   {
-    "momento": "2026-11-10T00:51:09.7595852Z",
+    "momento": "2026-11-10T01:28:53.7935871Z",
     "tipo": "Resposta",
     "ruaId": 5,
     "rua": "Rua da Várzea",
     "descricao": "Água subindo, por Sms."
   },
   {
-    "momento": "2026-11-10T00:54:09.7595852Z",
+    "momento": "2026-11-10T01:31:53.7935871Z",
     "tipo": "SensorAcimaDoLimite",
     "ruaId": 7,
     "rua": "Rua das Palafitas",
     "descricao": "Sensor regua-exemplo passou do limite de 120 cm (125 cm). Máximo no período: 142 cm."
   },
   {
-    "momento": "2026-11-10T00:55:09.7595852Z",
+    "momento": "2026-11-10T01:32:53.7935871Z",
     "tipo": "AcaoDoCoordenador",
     "ruaId": 4,
     "rua": "Rua dos Barqueiros",
     "descricao": "Coordenação chamou a rua no WhatsApp."
   },
   {
-    "momento": "2026-11-10T00:57:09.7595852Z",
+    "momento": "2026-11-10T01:34:53.7935871Z",
     "tipo": "Resposta",
     "ruaId": 2,
     "rua": "Rua do Aguapé",
     "descricao": "Preciso de ajuda (5 pessoa(s)), pelo app."
   },
   {
-    "momento": "2026-11-10T01:04:17.2833443Z",
+    "momento": "2026-11-10T01:41:58.906283Z",
     "tipo": "Resposta",
     "ruaId": 6,
     "rua": "Rua do Córrego Seco",
     "descricao": "Preciso de ajuda (4 pessoa(s)), pelo app."
   },
   {
-    "momento": "2026-11-10T01:04:17.3279444Z",
+    "momento": "2026-11-10T01:41:58.9812477Z",
     "tipo": "AcaoDoCoordenador",
     "ruaId": 7,
     "rua": "Rua das Palafitas",
     "descricao": "Coordenação marcou \"Vou até lá\"."
   },
   {
-    "momento": "2026-11-10T01:04:17.3464839Z",
+    "momento": "2026-11-10T01:41:59.0054388Z",
     "tipo": "SensorAcimaDoLimite",
     "ruaId": 4,
     "rua": "Rua dos Barqueiros",
@@ -439,25 +439,25 @@ Resposta: **HTTP 200**
 ```json
 {
   "bairro": "Jardim Pantanal (simulado)",
-  "chamadaIniciadaEm": "2026-11-10T00:39:09.759Z",
+  "chamadaIniciadaEm": "2026-11-10T01:16:53.793Z",
   "ruas": [
     {
       "id": "2",
       "nome": "Rua do Aguapé",
       "status": "preciso_ajuda",
-      "respondidaEm": "2026-11-10T00:57:09.759Z"
+      "respondidaEm": "2026-11-10T01:34:53.793Z"
     },
     {
       "id": "6",
       "nome": "Rua do Córrego Seco",
       "status": "preciso_ajuda",
-      "respondidaEm": "2026-11-10T01:04:17.283Z"
+      "respondidaEm": "2026-11-10T01:41:58.906Z"
     },
     {
       "id": "1",
       "nome": "Rua das Garças",
       "status": "preciso_ajuda",
-      "respondidaEm": "2026-11-10T00:47:09.759Z"
+      "respondidaEm": "2026-11-10T01:24:53.793Z"
     },
     {
       "id": "4",
@@ -475,19 +475,19 @@ Resposta: **HTTP 200**
       "id": "5",
       "nome": "Rua da Várzea",
       "status": "agua_subindo",
-      "respondidaEm": "2026-11-10T00:51:09.759Z"
+      "respondidaEm": "2026-11-10T01:28:53.793Z"
     },
     {
       "id": "8",
       "nome": "Rua Ipê Amarelo",
       "status": "tudo_bem",
-      "respondidaEm": "2026-11-10T00:45:09.759Z"
+      "respondidaEm": "2026-11-10T01:22:53.793Z"
     },
     {
       "id": "3",
       "nome": "Travessa da Taboa",
       "status": "tudo_bem",
-      "respondidaEm": "2026-11-10T00:43:09.759Z"
+      "respondidaEm": "2026-11-10T01:20:53.793Z"
     }
   ]
 }
@@ -507,7 +507,7 @@ Content-Type: application/json
   "status": "agua_subindo",
   "pessoas": null,
   "observacao": "Água na calçada",
-  "criadaEm": "2026-11-10T01:04:17.409Z"
+  "criadaEm": "2026-11-10T01:41:59.082Z"
 }
 ```
 
@@ -520,8 +520,8 @@ Resposta: **HTTP 201**
   "status": "agua_subindo",
   "pessoas": null,
   "observacao": "Água na calçada",
-  "criadaEm": "2026-11-10T01:04:17.409Z",
-  "recebidaEm": "2026-11-10T01:04:17.420Z"
+  "criadaEm": "2026-11-10T01:41:59.082Z",
+  "recebidaEm": "2026-11-10T01:41:59.096Z"
 }
 ```
 
@@ -539,7 +539,7 @@ Content-Type: application/json
   "status": "agua_subindo",
   "pessoas": null,
   "observacao": "Água na calçada",
-  "criadaEm": "2026-11-10T01:04:17.409Z"
+  "criadaEm": "2026-11-10T01:41:59.082Z"
 }
 ```
 
@@ -552,8 +552,8 @@ Resposta: **HTTP 200**
   "status": "agua_subindo",
   "pessoas": null,
   "observacao": "Água na calçada",
-  "criadaEm": "2026-11-10T01:04:17.409Z",
-  "recebidaEm": "2026-11-10T01:04:17.420Z"
+  "criadaEm": "2026-11-10T01:41:59.082Z",
+  "recebidaEm": "2026-11-10T01:41:59.096Z"
 }
 ```
 
@@ -615,7 +615,7 @@ Resposta: **HTTP 200**
   "local": "Córrego do bairro, na ponte da Rua das Palafitas (simulado)",
   "nivelMetros": 1.48,
   "limiteMetros": 1.2,
-  "medidaEm": "2026-11-10T01:04:17.457Z"
+  "medidaEm": "2026-11-10T01:41:59.140Z"
 }
 ```
 
@@ -673,7 +673,7 @@ Resposta: **HTTP 404**
   "status": 404,
   "detail": "A rua 4 não tem plano cadastrado.",
   "instance": "/ruas/4/plano",
-  "traceId": "00-1650cda3e04188a3f72a8a32f1cfbb6d-70a02d2abf909cbe-00"
+  "traceId": "00-9ad913925c506f8a949ee7fe65e5d028-010a59b071ee04cc-00"
 }
 ```
 
@@ -701,7 +701,7 @@ Resposta: **HTTP 409**
   "status": 409,
   "detail": "O bairro já tem a chamada 2 aberta. Encerre-a antes de abrir outra.",
   "instance": "/api/bairros/1/chamadas",
-  "traceId": "00-1056ca01fd31af8e056ec9e7ca471b85-f4f40851b17f2840-00"
+  "traceId": "00-5c7ea550e05034328e0a71cb748549a0-11bf67dcddf67646-00"
 }
 ```
 
@@ -722,8 +722,8 @@ Resposta: **HTTP 200**
   "tipo": "Real",
   "status": "Encerrada",
   "pergunta": "Aviso INMET de Acumulado de Chuva (perigo potencial). Como está a sua rua agora?",
-  "iniciadaEm": "2026-11-10T00:39:09.7595852Z",
-  "encerradaEm": "2026-11-10T01:04:17.5586371Z",
+  "iniciadaEm": "2026-11-10T01:16:53.7935871Z",
+  "encerradaEm": "2026-11-10T01:41:59.2655144Z",
   "encerramentoPrevistoEm": null,
   "aviso": {
     "fonte": "INMET",
@@ -740,7 +740,7 @@ Resposta: **HTTP 200**
     "percentualConhecidoEm15Min": 62.5,
     "percentualComResposta": 75,
     "ruasQuePediramAjuda": 3,
-    "minutosAtePrimeiraRespostaEmMedia": 10.4
+    "minutosAtePrimeiraRespostaEmMedia": 10.3
   }
 }
 ```
@@ -768,9 +768,9 @@ Resposta: **HTTP 201** (Location: `http://localhost:5080/api/chamadas/3`)
   "tipo": "Treino",
   "status": "Aberta",
   "pergunta": "TREINO: isto é um simulado, não há alerta real. Como estaria a sua rua agora?",
-  "iniciadaEm": "2026-11-10T01:04:17.5769414Z",
+  "iniciadaEm": "2026-11-10T01:41:59.2765688Z",
   "encerradaEm": null,
-  "encerramentoPrevistoEm": "2026-11-10T01:24:17.5769414Z",
+  "encerramentoPrevistoEm": "2026-11-10T02:01:59.2765688Z",
   "aviso": null,
   "duracaoMinutos": 20,
   "resultado": null
@@ -796,7 +796,7 @@ Resposta: **HTTP 200**
       "tipo": "Real",
       "chamadas": 1,
       "percentualMedioConhecidoEm15Min": 62.5,
-      "minutosMediosAtePrimeiraResposta": 10.4
+      "minutosMediosAtePrimeiraResposta": 10.3
     },
     {
       "tipo": "Treino",
@@ -809,7 +809,7 @@ Resposta: **HTTP 200**
     {
       "chamadaId": 3,
       "tipo": "Treino",
-      "iniciadaEm": "2026-11-10T01:04:17.5769414Z",
+      "iniciadaEm": "2026-11-10T01:41:59.2765688Z",
       "status": "Aberta",
       "indicador": {
         "totalDeRuas": 8,
@@ -825,7 +825,7 @@ Resposta: **HTTP 200**
     {
       "chamadaId": 2,
       "tipo": "Real",
-      "iniciadaEm": "2026-11-10T00:39:09.7595852Z",
+      "iniciadaEm": "2026-11-10T01:16:53.7935871Z",
       "status": "Encerrada",
       "indicador": {
         "totalDeRuas": 8,
@@ -835,13 +835,13 @@ Resposta: **HTTP 200**
         "percentualConhecidoEm15Min": 62.5,
         "percentualComResposta": 75,
         "ruasQuePediramAjuda": 3,
-        "minutosAtePrimeiraRespostaEmMedia": 10.4
+        "minutosAtePrimeiraRespostaEmMedia": 10.3
       }
     },
     {
       "chamadaId": 1,
       "tipo": "Treino",
-      "iniciadaEm": "2026-11-03T01:04:09.7595852Z",
+      "iniciadaEm": "2026-11-03T01:41:53.7935871Z",
       "status": "Encerrada",
       "indicador": {
         "totalDeRuas": 8,
@@ -875,6 +875,123 @@ Resposta: **HTTP 404**
   "status": 404,
   "detail": "Chamada 999 não encontrada.",
   "instance": "/api/chamadas/999",
-  "traceId": "00-1fba932f8a165ae362c303787977a6df-405ff3a59f6652a7-00"
+  "traceId": "00-508f153170f40c45f040413bff940443-108c8c2e6ac11f46-00"
 }
 ```
+
+## Parte 4: avisos do INMET (`GET /avisos`)
+
+A API baixa os avisos ativos do INMET (Brasil inteiro) em segundo plano, guarda em cache e devolve só os do município pedido, com os campos do tipo `Aviso` do app. Os avisos abaixo são **reais**, do momento da execução.
+
+### 25. GET /avisos?codigoIbge=5200050 (município com aviso agora)
+
+Do mais grave ao mais leve; no empate, o que começa antes. Datas no horário de Brasília com fuso (-03:00).
+
+```http
+GET /avisos?codigoIbge=5200050
+```
+
+Resposta: **HTTP 200**
+
+```json
+[
+  {
+    "id": "56358",
+    "titulo": "Tempestade",
+    "severidade": "Perigo Potencial",
+    "gravidade": 1,
+    "inicio": "2026-11-09T09:27:00-03:00",
+    "fim": "2026-11-09T23:59:00-03:00",
+    "quando": "hoje",
+    "riscos": [
+      "Chuva entre 20 e 30 mm/h ou até 50 mm/dia, ventos intensos (40-60 km/h), e queda de granizo. Baixo risco de corte de energia elétrica, estragos em plantações, queda de galhos de árvores e de alagamentos."
+    ],
+    "instrucoes": [
+      "Em caso de rajadas de vento: (não se abrigue debaixo de árvores, pois há leve risco de queda e descargas elétricas e não estacione veículos próximos a torres de transmissão e placas de propaganda).",
+      "Evite usar aparelhos eletrônicos ligados à tomada.",
+      "Obtenha mais informações junto à Defesa Civil (telefone 199) e ao Corpo de Bombeiros (telefone 193)."
+    ]
+  },
+  {
+    "id": "56361",
+    "titulo": "Tempestade",
+    "severidade": "Perigo Potencial",
+    "gravidade": 1,
+    "inicio": "2026-11-10T00:00:00-03:00",
+    "fim": "2026-11-10T23:59:00-03:00",
+    "quando": "futuro",
+    "riscos": [
+      "Chuva entre 20 e 30 mm/h ou até 50 mm/dia, ventos intensos (40-60 km/h), e queda de granizo. Baixo risco de corte de energia elétrica, estragos em plantações, queda de galhos de árvores e de alagamentos."
+    ],
+    "instrucoes": [
+      "Em caso de rajadas de vento: (não se abrigue debaixo de árvores, pois há leve risco de queda e descargas elétricas e não estacione veículos próximos a torres de transmissão e placas de propaganda).",
+      "Evite usar aparelhos eletrônicos ligados à tomada.",
+      "Obtenha mais informações junto à Defesa Civil (telefone 199) e ao Corpo de Bombeiros (telefone 193)."
+    ]
+  },
+  {
+    "id": "56362",
+    "titulo": "Tempestade",
+    "severidade": "Perigo Potencial",
+    "gravidade": 1,
+    "inicio": "2026-11-11T00:00:00-03:00",
+    "fim": "2026-11-11T23:59:00-03:00",
+    "quando": "futuro",
+    "riscos": [
+      "Chuva entre 20 e 30 mm/h ou até 50 mm/dia, ventos intensos (40-60 km/h), e queda de granizo. Baixo risco de corte de energia elétrica, estragos em plantações, queda de galhos de árvores e de alagamentos."
+    ],
+    "instrucoes": [
+      "Em caso de rajadas de vento: (não se abrigue debaixo de árvores, pois há leve risco de queda e descargas elétricas e não estacione veículos próximos a torres de transmissão e placas de propaganda).",
+      "Evite usar aparelhos eletrônicos ligados à tomada.",
+      "Obtenha mais informações junto à Defesa Civil (telefone 199) e ao Corpo de Bombeiros (telefone 193)."
+    ]
+  }
+]
+```
+
+### 26. GET /avisos?codigoIbge=3550308 (São Paulo)
+
+Sem aviso para a capital neste momento: lista vazia.
+
+```http
+GET /avisos?codigoIbge=3550308
+```
+
+Resposta: **HTTP 200**, sem corpo
+
+```json
+[]
+```
+
+### 27. Código IBGE inválido
+
+O código precisa ter 7 dígitos: **400**.
+
+```http
+GET /avisos?codigoIbge=12345
+```
+
+Resposta: **HTTP 400**
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors": {
+    "codigoIbge": [
+      "Informe o código IBGE do município com 7 dígitos. Ex.: 3550308."
+    ]
+  },
+  "traceId": "00-e48c3dcfe7e0c1cf9a15f9d124ac9b65-606ca8df2c1df161-00"
+}
+```
+
+### Quanto o app deixa de baixar
+
+| Resposta | Tamanho |
+|---|---|
+| INMET `avisos/ativos` (Brasil inteiro, com polígonos e ícones) | 148.353 bytes |
+| Elo API `GET /avisos?codigoIbge=5200050` | 2.333 bytes |
+
+O app recebe 98,4% menos dados. O contrato do app conta que, em dias com muitos avisos, a resposta do INMET passa de 580 KB.

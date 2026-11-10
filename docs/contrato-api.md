@@ -34,7 +34,11 @@ Cada item tem teste de integração em [`tests/Elo.Tests/Integracao/ContratoDoAp
 | `medidaEm` omitido: vale a hora de recebimento | Igual | Sim |
 | Resposta `204` | 204, sem corpo | Sim |
 | A chave fica fora do repositório | Variável de ambiente `Dispositivos__Chave` ou `dotnet user-secrets` | Sim |
-| Recomendação: `GET /avisos?codigoIbge=` filtrando o INMET no servidor | **Não feito**. O app segue buscando o INMET direto | Não |
+| Recomendação: `GET /avisos?codigoIbge=` filtrando o INMET no servidor | Feito: baixa a cada 5 minutos em segundo plano, guarda em cache e devolve só o município | Sim |
+| `riscos` e `instrucoes` como listas de verdade | Listas; a lista do Python em texto também é aceita, como no `listaPython.ts` | Sim |
+| `geocodes`: comparar o código inteiro, nunca por prefixo | Código inteiro (`3550308` não casa com `355030` nem com `35503089`) | Sim |
+| `encerrado` indica aviso já encerrado (descartar) | Descartado, venha como booleano ou texto (`"True"`) | Sim |
+| `inicio` e `fim` em horário de Brasília, sem fuso | Viram ISO com `-03:00` | Sim |
 
 ## O que o contrato não dizia e foi decidido aqui
 
@@ -49,6 +53,23 @@ Cada item tem teste de integração em [`tests/Elo.Tests/Integracao/ContratoDoAp
 | Maiúsculas no `reguaId` | Não diferencia: `REGUA-EXEMPLO` e `regua-exemplo` são a mesma régua |
 | Chave não configurada no servidor | Em desenvolvimento, `POST /leituras` aceita sem chave (para testar no Swagger). Em qualquer outro ambiente, 401 |
 | `bateriaPercentual` | Aceito, mas não guardado nesta versão |
+
+## Avisos do INMET (`GET /avisos`)
+
+O exemplo do contrato traz `id`, `titulo`, `severidade`, `inicio`, `fim`, `riscos` e `instrucoes`. A API devolve esses campos
+e também `gravidade` (1, 2 ou 3) e `quando` (`hoje` ou `futuro`): são exatamente os 9 campos do tipo `Aviso` do app
+(`src/types/index.ts`), já filtrados pelo município e ordenados do mais grave ao mais leve. O app não precisa converter nada.
+
+| O que | Como |
+|---|---|
+| Atualização | Um serviço em segundo plano baixa `avisos/ativos` a cada 5 minutos (`Avisos:IntervaloEmMinutos`) |
+| Cache | A lista vale por até 10 minutos (`Avisos:IdadeMaximaEmMinutos`); só uma requisição baixa por vez |
+| INMET fora do ar | Vale a última lista boa; sem nenhuma, **503** |
+| Tamanho | Na evidência, 148.353 bytes do INMET viraram 2.333 bytes para o município |
+
+**Para o app usar:** hoje o `buscarAvisos` do `inmet.ts` chama o INMET direto e passa a resposta bruta para a
+`normalizarAvisos`, que espera o formato `{ hoje, futuro }` do INMET. Para usar a API, falta um ramo assim:
+quando `usaApiDoBairro()`, chamar `GET {API}/avisos?codigoIbge=...` e usar a lista como `Aviso[]`, sem passar pela `normalizarAvisos`.
 
 ## Exemplos
 

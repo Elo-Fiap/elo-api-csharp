@@ -38,6 +38,13 @@ Com isso, a IA adaptou a API ao contrato do app (rotas `/situacao`, `/chamadas`,
 `/leituras` com a chave do ESP32), ajustou as regras (pessoas opcional, observação de até 200 caracteres, id em texto),
 rodou os 115 testes, gerou as evidências de novo e abriu o pull request no `elo-api-csharp`.
 
+Depois, para completar o contrato:
+
+> Fazer o /avisos
+
+A IA acrescentou o `GET /avisos?codigoIbge=`: a API baixa os avisos do INMET em segundo plano, guarda em cache e devolve
+só os do município, com as mesmas regras do `inmet.ts` do app (e os mesmos casos de teste, com o fixture do app).
+
 ## Perguntas que a IA fez e as respostas
 
 | Pergunta | Resposta escolhida |

@@ -17,8 +17,9 @@ public static class DocumentacaoDaApi
         **Os dados de exemplo são simulados** (Jardim Pantanal, ruas, apelidos e telefones fictícios).
 
         **Rotas do contrato do app** (sem `/api`, como no `docs/contrato-api.md` do repositório elo-app):
-        `GET /situacao`, `POST /chamadas`, `GET /regua`, `GET /ruas/{id}/plano` e, para o ESP32,
-        `POST /leituras` com o header `X-Chave-Dispositivo`. As rotas `/api/...` são as da API completa.
+        `GET /situacao`, `POST /chamadas`, `GET /regua`, `GET /ruas/{id}/plano`, `GET /avisos?codigoIbge=`
+        (avisos do INMET já filtrados pelo município) e, para o ESP32, `POST /leituras` com o header
+        `X-Chave-Dispositivo`. As rotas `/api/...` são as da API completa.
 
         Roteiro rápido para testar:
         1. `GET /api/bairros` para ver o bairro e a chamada aberta;

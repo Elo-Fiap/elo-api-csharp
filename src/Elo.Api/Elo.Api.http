@@ -162,6 +162,9 @@ GET {{Elo}}/regua
 ### App: plano da rua (404 = rua sem plano)
 GET {{Elo}}/ruas/1/plano
 
+### App: avisos do INMET que valem para o município (código IBGE com 7 dígitos; 3550308 = São Paulo)
+GET {{Elo}}/avisos?codigoIbge=3550308
+
 ### ESP32: leitura da régua (em desenvolvimento sem Dispositivos:Chave configurada, a chave não é exigida)
 POST {{Elo}}/leituras
 Content-Type: application/json

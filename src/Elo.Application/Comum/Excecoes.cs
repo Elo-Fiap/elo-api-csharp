@@ -16,3 +16,6 @@ public sealed class RecursoNaoEncontradoException(string mensagem) : Exception(m
 
 /// <summary>A operação conflita com o estado atual (ex.: já existe chamada aberta). A API devolve HTTP 409.</summary>
 public sealed class ConflitoException(string mensagem) : Exception(mensagem);
+
+/// <summary>Um serviço externo (o INMET) não respondeu e não há dado guardado. A API devolve HTTP 503.</summary>
+public sealed class FonteIndisponivelException(string mensagem, Exception? causa = null) : Exception(mensagem, causa);
