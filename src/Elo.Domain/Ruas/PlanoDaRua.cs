@@ -6,6 +6,11 @@ namespace Elo.Domain.Ruas;
 /// Plano da rua: rota, ponto de encontro, abrigo e o que levar.
 /// O app guarda uma cópia para abrir sem internet; <see cref="AtualizadoEm"/>
 /// diz ao app se a cópia dele está velha.
+/// <para>
+/// Value object imutável: a lista de itens é só de leitura e entra na comparação por valor.
+/// Sozinho, o <c>record</c> compararia a lista por referência, por isso <see cref="Equals(PlanoDaRua?)"/>
+/// e <see cref="GetHashCode"/> são escritos aqui.
+/// </para>
 /// </summary>
 public sealed record PlanoDaRua
 {
@@ -17,7 +22,10 @@ public sealed record PlanoDaRua
     public string Rota { get; private init; } = string.Empty;
     public string PontoDeEncontro { get; private init; } = string.Empty;
     public string Abrigo { get; private init; } = string.Empty;
-    public List<string> ItensParaLevar { get; private init; } = [];
+
+    /// <summary>Só leitura: quem está fora do plano não consegue incluir nem tirar itens.</summary>
+    public IReadOnlyList<string> ItensParaLevar { get; private init; } = [];
+
     public DateTime AtualizadoEm { get; private init; }
 
     private PlanoDaRua()
@@ -42,7 +50,32 @@ public sealed record PlanoDaRua
             throw new RegraDeNegocioException($"O plano aceita no máximo {MaximoDeItens} itens para levar.");
         }
 
-        ItensParaLevar = itens;
+        ItensParaLevar = itens.AsReadOnly();
         AtualizadoEm = atualizadoEm;
+    }
+
+    /// <summary>Dois planos são iguais quando têm os mesmos dados e os mesmos itens, na mesma ordem.</summary>
+    public bool Equals(PlanoDaRua? outro) =>
+        outro is not null
+        && Rota == outro.Rota
+        && PontoDeEncontro == outro.PontoDeEncontro
+        && Abrigo == outro.Abrigo
+        && AtualizadoEm == outro.AtualizadoEm
+        && ItensParaLevar.SequenceEqual(outro.ItensParaLevar);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Rota);
+        hash.Add(PontoDeEncontro);
+        hash.Add(Abrigo);
+        hash.Add(AtualizadoEm);
+
+        foreach (var item in ItensParaLevar)
+        {
+            hash.Add(item);
+        }
+
+        return hash.ToHashCode();
     }
 }

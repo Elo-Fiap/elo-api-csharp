@@ -57,6 +57,29 @@ public class PlanoDaRuaTests
 
         Assert.Throws<RegraDeNegocioException>(() => new PlanoDaRua("Rota", "Praça", "Escola", itens, Inicio));
     }
+
+    [Fact]
+    public void Planos_com_os_mesmos_itens_sao_iguais_mesmo_vindo_de_listas_diferentes()
+    {
+        var primeiro = new PlanoDaRua("Rota", "Praça", "Escola", ["Documentos", "Remédios"], Inicio);
+        var segundo = new PlanoDaRua("Rota", "Praça", "Escola", new List<string> { "Documentos", "Remédios" }, Inicio);
+        var outraOrdem = new PlanoDaRua("Rota", "Praça", "Escola", ["Remédios", "Documentos"], Inicio);
+
+        Assert.Equal(primeiro, segundo);
+        Assert.Equal(primeiro.GetHashCode(), segundo.GetHashCode());
+        Assert.NotEqual(primeiro, outraOrdem);
+    }
+
+    [Fact]
+    public void Lista_de_itens_nao_pode_ser_alterada_por_fora()
+    {
+        var plano = new PlanoDaRua("Rota", "Praça", "Escola", ["Documentos"], Inicio);
+
+        var lista = Assert.IsAssignableFrom<ICollection<string>>(plano.ItensParaLevar);
+        Assert.True(lista.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => lista.Add("Celular"));
+        Assert.Equal(["Documentos"], plano.ItensParaLevar);
+    }
 }
 
 public class SensorTests
