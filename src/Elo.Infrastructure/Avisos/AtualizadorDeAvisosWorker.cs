@@ -8,9 +8,10 @@ namespace Elo.Infrastructure.Avisos;
 /// <summary>
 /// Serviço em segundo plano que baixa os avisos do INMET a cada poucos minutos,
 /// para o GET /avisos responder na hora, sem esperar o INMET.
+/// Conhece só a interface <see cref="ICacheDeAvisos"/>, não a classe do cache.
 /// </summary>
 public sealed class AtualizadorDeAvisosWorker(
-    FonteDeAvisosEmCache fonte,
+    ICacheDeAvisos cache,
     IOptions<InmetOptions> opcoes,
     TimeProvider relogio,
     ILogger<AtualizadorDeAvisosWorker> logger) : BackgroundService
@@ -32,7 +33,7 @@ public sealed class AtualizadorDeAvisosWorker(
             {
                 try
                 {
-                    await fonte.AtualizarAsync(stoppingToken);
+                    await cache.AtualizarAsync(stoppingToken);
                 }
                 catch (FonteIndisponivelException)
                 {

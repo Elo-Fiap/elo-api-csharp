@@ -5,17 +5,28 @@ using Microsoft.Extensions.Options;
 
 namespace Elo.Infrastructure.Avisos;
 
+/// <summary>O lado do cache que o serviço em segundo plano usa: atualizar a lista de tempos em tempos.</summary>
+public interface ICacheDeAvisos
+{
+    /// <summary>Busca de novo na origem, mesmo com a lista guardada ainda boa.</summary>
+    Task<IReadOnlyList<AvisoDoInmet>> AtualizarAsync(CancellationToken cancellationToken = default);
+}
+
 /// <summary>
-/// Cache dos avisos do INMET (padrão Decorator sobre o <see cref="IClienteDoInmet"/>).
-/// O app pode pedir /avisos a toda hora; o INMET é baixado no máximo a cada poucos minutos,
+/// Cache dos avisos do INMET, no padrão Decorator: implementa a mesma <see cref="IFonteDeAvisos"/> da origem
+/// que embrulha (em produção, o <see cref="ClienteDoInmet"/>) e acrescenta o cache. Quem pede avisos
+/// recebe uma <see cref="IFonteDeAvisos"/> e não sabe se a lista veio do cache ou da origem.
+/// <para>
+/// O app pode pedir /avisos a toda hora; a origem é chamada no máximo a cada poucos minutos,
 /// pelo serviço em segundo plano ou quando o cache envelhece. Se o INMET cair, segue valendo
 /// a última lista boa. Só uma requisição baixa por vez (SemaphoreSlim).
+/// </para>
 /// </summary>
 public sealed class FonteDeAvisosEmCache(
-    IClienteDoInmet cliente,
+    IFonteDeAvisos origem,
     IOptions<InmetOptions> opcoes,
     TimeProvider relogio,
-    ILogger<FonteDeAvisosEmCache> logger) : IFonteDeAvisos, IDisposable
+    ILogger<FonteDeAvisosEmCache> logger) : IFonteDeAvisos, ICacheDeAvisos, IDisposable
 {
     /// <summary>Depois de uma falha, espera um pouco antes de tentar de novo (o app não fica preso esperando o INMET).</summary>
     public static readonly TimeSpan EsperaDepoisDeFalha = TimeSpan.FromMinutes(1);
@@ -73,7 +84,7 @@ public sealed class FonteDeAvisosEmCache(
                 return jaAtualizados;
             }
 
-            var avisos = await cliente.BaixarAvisosAtivosAsync(cancellationToken);
+            var avisos = await origem.ObterAvisosAsync(cancellationToken);
             Volatile.Write(ref _retrato, new Retrato(avisos, relogio.GetUtcNow()));
             Interlocked.Exchange(ref _ultimaFalhaEmTicks, 0);
 

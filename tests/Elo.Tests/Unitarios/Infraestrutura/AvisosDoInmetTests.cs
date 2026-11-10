@@ -1,7 +1,10 @@
 using System.Text.Json;
 using Elo.Application.Avisos;
 using Elo.Application.Comum;
+using Elo.Infrastructure;
 using Elo.Infrastructure.Avisos;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -97,11 +100,11 @@ public class FonteDeAvisosEmCacheTests
 {
     private static readonly IReadOnlyList<AvisoDoInmet> Lista = [Aviso("1", "3550308")];
 
-    private readonly Mock<IClienteDoInmet> _cliente = new();
+    private readonly Mock<IFonteDeAvisos> _origem = new();
     private readonly FakeTimeProvider _relogio = new(new DateTimeOffset(2026, 11, 9, 18, 0, 0, TimeSpan.Zero));
 
     private FonteDeAvisosEmCache CriarCache() => new(
-        _cliente.Object,
+        _origem.Object,
         Options.Create(new InmetOptions { IdadeMaximaEmMinutos = 10 }),
         _relogio,
         NullLogger<FonteDeAvisosEmCache>.Instance);
@@ -109,24 +112,24 @@ public class FonteDeAvisosEmCacheTests
     [Fact]
     public async Task Baixa_uma_vez_e_serve_do_cache_enquanto_a_lista_e_nova()
     {
-        _cliente.Setup(c => c.BaixarAvisosAtivosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Lista);
+        _origem.Setup(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Lista);
         using var cache = CriarCache();
 
         await cache.ObterAvisosAsync();
         await cache.ObterAvisosAsync();
         _relogio.Advance(TimeSpan.FromMinutes(9));
         await cache.ObterAvisosAsync();
-        _cliente.Verify(c => c.BaixarAvisosAtivosAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _origem.Verify(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()), Times.Once);
 
         _relogio.Advance(TimeSpan.FromMinutes(2)); // passou dos 10 minutos
         await cache.ObterAvisosAsync();
-        _cliente.Verify(c => c.BaixarAvisosAtivosAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _origem.Verify(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
     public async Task Com_o_INMET_fora_do_ar_segue_valendo_a_ultima_lista_boa()
     {
-        _cliente.SetupSequence(c => c.BaixarAvisosAtivosAsync(It.IsAny<CancellationToken>()))
+        _origem.SetupSequence(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Lista)
             .ThrowsAsync(new HttpRequestException("INMET fora do ar"));
         using var cache = CriarCache();
@@ -138,16 +141,34 @@ public class FonteDeAvisosEmCacheTests
 
         Assert.Same(Lista, depoisDaFalha);
         Assert.Same(Lista, logoEmSeguida);
-        _cliente.Verify(c => c.BaixarAvisosAtivosAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _origem.Verify(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
     public async Task Sem_lista_guardada_a_falha_vira_fonte_indisponivel()
     {
-        _cliente.Setup(c => c.BaixarAvisosAtivosAsync(It.IsAny<CancellationToken>()))
+        _origem.Setup(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("INMET fora do ar"));
         using var cache = CriarCache();
 
         await Assert.ThrowsAsync<FonteIndisponivelException>(() => cache.ObterAvisosAsync());
+    }
+
+    [Fact]
+    public void Decorator_quem_pede_a_fonte_de_avisos_recebe_o_cache()
+    {
+        var servicos = new ServiceCollection()
+            .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
+            .AddSingleton(TimeProvider.System)
+            .AddLogging()
+            .AddInfrastructure();
+
+        using var provedor = servicos.BuildServiceProvider();
+        var fonte = provedor.GetRequiredService<IFonteDeAvisos>();
+
+        // O cache embrulha o ClienteDoInmet e é a mesma instância que o serviço em segundo plano atualiza.
+        Assert.IsType<FonteDeAvisosEmCache>(fonte);
+        Assert.Same(fonte, provedor.GetRequiredService<ICacheDeAvisos>());
+        Assert.IsAssignableFrom<IFonteDeAvisos>(provedor.GetRequiredService<ClienteDoInmet>());
     }
 }

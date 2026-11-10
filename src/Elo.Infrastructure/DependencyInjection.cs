@@ -73,9 +73,12 @@ public static class DependencyInjection
             http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
         });
 
-        services.AddSingleton<IClienteDoInmet, ClienteDoInmet>();
-        services.AddSingleton<FonteDeAvisosEmCache>();
+        // Padrão Decorator: quem pede IFonteDeAvisos recebe o cache, e o cache embrulha o ClienteDoInmet (a origem).
+        services.AddSingleton<ClienteDoInmet>();
+        services.AddSingleton(provedor =>
+            ActivatorUtilities.CreateInstance<FonteDeAvisosEmCache>(provedor, provedor.GetRequiredService<ClienteDoInmet>()));
         services.AddSingleton<IFonteDeAvisos>(provedor => provedor.GetRequiredService<FonteDeAvisosEmCache>());
+        services.AddSingleton<ICacheDeAvisos>(provedor => provedor.GetRequiredService<FonteDeAvisosEmCache>());
         services.AddHostedService<AtualizadorDeAvisosWorker>();
     }
 
