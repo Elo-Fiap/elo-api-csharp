@@ -16,7 +16,9 @@ public class Sensor : Entidade
 
     public int RuaId { get; private set; }
 
-    /// <summary>Código gravado no ESP32. Ex.: ESP32-PANTANAL-01.</summary>
+    /// <summary>
+    /// Código gravado no ESP32, sempre em minúsculas. É o "reguaId" do contrato do app. Ex.: regua-exemplo.
+    /// </summary>
     public string Codigo { get; private set; } = string.Empty;
 
     public string Local { get; private set; } = string.Empty;
@@ -36,9 +38,13 @@ public class Sensor : Entidade
     public Sensor(int ruaId, string codigo, string local, double limiteAlertaCm)
     {
         RuaId = Guarda.IdValido(ruaId, "O sensor precisa estar em uma rua.");
-        Codigo = Guarda.TextoObrigatorio(codigo, "Código do sensor", TamanhoMaximoCodigo).ToUpperInvariant();
+        Codigo = NormalizarCodigo(codigo);
         Atualizar(local, limiteAlertaCm, ativo: true);
     }
+
+    /// <summary>O código é comparado sem diferenciar maiúsculas: "REGUA-EXEMPLO" e "regua-exemplo" são o mesmo sensor.</summary>
+    public static string NormalizarCodigo(string? codigo) =>
+        Guarda.TextoObrigatorio(codigo, "Código do sensor", TamanhoMaximoCodigo).ToLowerInvariant();
 
     public void Atualizar(string local, double limiteAlertaCm, bool ativo)
     {

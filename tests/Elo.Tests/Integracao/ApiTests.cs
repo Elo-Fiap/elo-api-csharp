@@ -99,7 +99,7 @@ public class RespostasApiTests(EloApiFactory fabrica) : IClassFixture<EloApiFact
     [Fact]
     public async Task Reenvio_offline_com_o_mesmo_idLocal_nao_duplica()
     {
-        var corpo = new RegistrarRespostaRequest { IdLocal = Guid.NewGuid(), RuaId = 6, Situacao = SituacaoRua.TudoBem };
+        var corpo = new RegistrarRespostaRequest { IdLocal = Guid.NewGuid().ToString(), RuaId = 6, Situacao = SituacaoRua.TudoBem };
 
         var primeira = await _cliente.EnviarAsync("/api/chamadas/2/respostas", corpo);
         var reenvio = await _cliente.EnviarAsync("/api/chamadas/2/respostas", corpo);
@@ -111,10 +111,15 @@ public class RespostasApiTests(EloApiFactory fabrica) : IClassFixture<EloApiFact
     }
 
     [Fact]
-    public async Task Pedido_de_ajuda_sem_pessoas_devolve_422()
+    public async Task Resposta_fora_do_horario_da_chamada_devolve_422()
     {
-        var resposta = await _cliente.EnviarAsync("/api/chamadas/2/respostas",
-            new RegistrarRespostaRequest { RuaId = 4, Situacao = SituacaoRua.PrecisoDeAjuda });
+        // A chamada 2 começou há uns 25 minutos: uma resposta "dada" 3 horas atrás não é dela.
+        var resposta = await _cliente.EnviarAsync("/api/chamadas/2/respostas", new RegistrarRespostaRequest
+        {
+            RuaId = 4,
+            Situacao = SituacaoRua.TudoBem,
+            RespondidaEm = DateTimeOffset.UtcNow.AddHours(-3)
+        });
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, resposta.StatusCode);
     }
@@ -182,12 +187,12 @@ public class SensoresERuasApiTests(EloApiFactory fabrica) : IClassFixture<EloApi
     [Fact]
     public async Task Leitura_do_ESP32_acima_do_limite_e_marcada()
     {
-        var resposta = await _cliente.EnviarAsync("/api/sensores/2/leituras", new RegistrarLeituraRequest { NivelCm = 52.5 });
+        var resposta = await _cliente.EnviarAsync("/api/sensores/2/leituras", new RegistrarLeituraRequest { NivelCm = 160 });
         var leitura = await resposta.LerAsync<LeituraDto>();
 
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
         Assert.True(leitura.AcimaDoLimite);
-        Assert.Equal(50, leitura.LimiteCm);
+        Assert.Equal(150, leitura.LimiteCm);
     }
 
     [Fact]

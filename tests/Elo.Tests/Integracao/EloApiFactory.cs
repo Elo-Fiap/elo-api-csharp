@@ -20,6 +20,9 @@ public sealed class EloApiFactory : WebApplicationFactory<Program>
         Converters = { new JsonStringEnumConverter() }
     };
 
+    /// <summary>Chave do ESP32 só para os testes (a de verdade fica fora do repositório).</summary>
+    public const string ChaveDeDispositivo = "chave-de-teste";
+
     private readonly string _arquivoDoBanco = Path.Combine(Path.GetTempPath(), $"elo-testes-{Guid.NewGuid():N}.db");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -28,7 +31,8 @@ public sealed class EloApiFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, configuracao) => configuracao.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:Elo"] = $"Data Source={_arquivoDoBanco}",
-            ["Retencao:Habilitada"] = "false"
+            ["Retencao:Habilitada"] = "false",
+            ["Dispositivos:Chave"] = ChaveDeDispositivo
         }));
     }
 

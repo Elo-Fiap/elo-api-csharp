@@ -31,7 +31,7 @@ public class PriorizadorDeRuasTests
             Responder(chamada, aguape, SituacaoRua.PrecisoDeAjuda, 18, pessoas: 5)
         ];
         var vouAteLa = chamada.RegistrarAcao(garcas, TipoAcao.VouAteLa, Inicio.AddMinutes(10));
-        var sensorAcimaDoLimite = new LeituraRecente("ESP32-01", 46, 40, true, Inicio.AddMinutes(20));
+        var sensorAcimaDoLimite = new LeituraRecente("regua-exemplo", 142, 120, true, Inicio.AddMinutes(20));
 
         Rua[] ruasForaDeOrdem = [taboa, corrego, ipe, palafitas, varzea, barqueiros, garcas, aguape];
         var situacoes = ruasForaDeOrdem.Select(rua => SituacaoDaRua.Montar(

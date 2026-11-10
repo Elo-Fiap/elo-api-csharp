@@ -1,4 +1,5 @@
 using Elo.Application.Abstracoes;
+using Elo.Application.ContratoDoApp;
 using Elo.Application.Retencao;
 using Elo.Infrastructure.Persistencia;
 using Elo.Infrastructure.Repositorios;
@@ -43,6 +44,11 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddHostedService<RetencaoWorker>();
+
+        services.AddOptions<ContratoDoAppOptions>()
+            .BindConfiguration(ContratoDoAppOptions.Secao)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         return services;
     }

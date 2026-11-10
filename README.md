@@ -30,6 +30,7 @@
 
 - [O que é a API](#o-que-é-a-api)
 - [Como executar](#como-executar)
+- [Ligar o app e a régua (ESP32)](#ligar-o-app-e-a-régua-esp32)
 - [Endpoints](#endpoints)
 - [Arquitetura](#arquitetura)
 - [Onde cada critério da avaliação aparece](#onde-cada-critério-da-avaliação-aparece)
@@ -47,19 +48,20 @@ o coordenador do bairro abre uma **chamada**; a liderança de cada rua responde 
 Esta API é o backend dessa ideia. Ela:
 
 - guarda bairros, ruas, chamadas, respostas e ações do coordenador ("Vou até lá");
-- **ordena as ruas com LINQ** para o painel do coordenador (quem pediu ajuda, depois quem está em silêncio, com o sensor e o risco da rua pesando na ordem);
+- **ordena as ruas com LINQ** para o painel do coordenador (quem pediu ajuda, depois quem está em silêncio, com a régua e o risco da rua pesando na ordem);
 - calcula o **indicador de impacto** da proposta: percentual de ruas com situação conhecida em 15 minutos;
-- recebe as leituras do **ESP32** (nível da água) e marca as que passam do limite;
-- aceita o **reenvio offline** das respostas sem duplicar (cada resposta tem um `idLocal` gerado no celular);
+- recebe as leituras da **régua (ESP32)** e marca as que passam do limite;
+- **fala a língua do app**: implementa as rotas do contrato do `elo-app` (`/situacao`, `/chamadas`, `/regua`, `/ruas/{id}/plano` e `/leituras`);
+- aceita o **reenvio offline** das respostas sem duplicar (cada resposta tem um id gerado no celular);
 - separa **chamada real** (motivada por um aviso oficial do INMET, porque o Elo não cria alerta próprio) de **treino** (simulado com prazo);
 - protege a privacidade: mascara CPF, telefone e e-mail digitados na observação e **apaga as respostas depois de 30 dias**, guardando só o indicador.
 
 ```mermaid
 flowchart LR
     INMET["Aviso oficial (INMET)"] --> APP
-    APP["App Expo<br/>liderança e coordenador"] -- "chamadas e respostas" --> API["Elo API<br/>C# .NET 10 + EF Core"]
-    ESP["ESP32 + HC-SR04<br/>no ponto crítico"] -- "leituras de nível" --> API
-    API -- "painel ordenado e indicador" --> APP
+    APP["App Expo (elo-app)<br/>liderança e coordenador"] -- "/situacao, /chamadas, /ruas/{id}/plano, /regua" --> API["Elo API<br/>C# .NET 10 + EF Core"]
+    ESP["Régua ESP32 + HC-SR04<br/>(elo-regua-esp32)"] -- "POST /leituras" --> API
+    COORD["Coordenador (Swagger ou página do bairro)"] -- "/api/... abre e encerra chamadas" --> API
     VM["VM Linux"] -. "hospeda" .-> API
 ```
 
@@ -75,7 +77,7 @@ dotnet run --project src/Elo.Api
 ```
 
 Na primeira execução a API aplica as migrations, cria o arquivo `src/Elo.Api/elo.db` e cadastra os dados simulados
-(uma chamada real aberta e um treino antigo). Depois abra:
+(uma chamada real aberta, um treino antigo e a régua `regua-exemplo`). Depois abra:
 
 | Endereço | O que é |
 |---|---|
@@ -111,12 +113,47 @@ dotnet publish src/Elo.Api -c Release -o publicar
 ```
 
 ```bash
-ASPNETCORE_URLS=http://0.0.0.0:5080 dotnet publicar/Elo.Api.dll
+ASPNETCORE_URLS=http://0.0.0.0:5080 Dispositivos__Chave=<chave-da-regua> dotnet publicar/Elo.Api.dll
 ```
+
+## Ligar o app e a régua (ESP32)
+
+**App (`elo-app`).** O app chama `EXPO_PUBLIC_API_URL` + `/situacao`, `/chamadas`, `/regua` e `/ruas/{id}/plano`.
+Basta apontar para a API, sem `/api` no final:
+
+```bash
+EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:5080
+```
+
+A resposta da liderança só entra se houver **chamada aberta** no bairro (o coordenador abre pelo Swagger:
+`POST /api/bairros/1/chamadas`). Nos dados simulados já existe uma aberta. O bairro atendido pelas rotas do app é o
+`ContratoDoApp:BairroId` do `appsettings.json` (o contrato diz que cada bairro do piloto tem a sua URL).
+
+**Régua (`elo-regua-esp32`).** O `sketch.ino` manda `POST /leituras` com `{"reguaId":"regua-exemplo","nivelMetros":1.42}`
+e o header `X-Chave-Dispositivo`. A `regua-exemplo` já vem cadastrada, com limite de 1,20 m como no firmware.
+A chave **não fica no repositório**: configure por variável de ambiente (`Dispositivos__Chave`) ou `dotnet user-secrets`.
+Sem chave configurada, só o ambiente de desenvolvimento aceita a leitura (para testar no Swagger).
 
 ## Endpoints
 
-São 33 operações REST, todas assíncronas e documentadas no Swagger/Scalar. Nos dados simulados: bairro `1`, treino antigo = chamada `1`, chamada real aberta = chamada `2`.
+São 38 operações REST, todas assíncronas e documentadas no Swagger/Scalar.
+
+### Rotas do contrato do app e do ESP32 (sem `/api`)
+
+Seguem o [`docs/contrato-api.md`](https://github.com/Elo-Fiap/elo-app/blob/main/docs/contrato-api.md) do `elo-app`:
+status `tudo_bem`, `agua_subindo`, `preciso_ajuda` (nulo = silêncio), ids em texto, datas no formato do `toISOString()` e medidas em metros.
+
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/situacao` | Situação do bairro na chamada atual, na ordem do painel (tela "Bairro" do app) |
+| POST | `/chamadas` | Recebe a resposta da rua enviada pelo app (201; 200 se o mesmo `id` já tinha chegado) |
+| GET | `/regua` | Última leitura da régua, em metros (`?reguaId=` opcional) |
+| GET | `/ruas/{id}/plano` | Plano da rua com contatos de emergência (404 = rua sem plano) |
+| POST | `/leituras` | Leitura do ESP32, com o header `X-Chave-Dispositivo` (204) |
+
+### API completa (`/api`)
+
+Nos dados simulados: bairro `1`, treino antigo = chamada `1`, chamada real aberta = chamada `2`.
 
 | Método | Rota | O que faz |
 |---|---|---|
@@ -139,11 +176,11 @@ São 33 operações REST, todas assíncronas e documentadas no Swagger/Scalar. N
 | GET / POST | `/api/chamadas/{id}/respostas` | Lista (filtros `situacao`, `ruaId`) ou registra a resposta de uma rua |
 | GET | `/api/chamadas/{id}/respostas/{respostaId}` | Detalha uma resposta |
 | GET / POST | `/api/chamadas/{id}/acoes` | Lista ou registra ação do coordenador (`ContatoWhatsApp`, `Ligacao`, `VouAteLa`) |
-| GET / POST | `/api/sensores` | Lista (filtro `ruaId`) ou cadastra sensor ESP32 |
-| GET / PUT / DELETE | `/api/sensores/{id}` | Detalha, atualiza ou exclui sensor |
-| GET / POST | `/api/sensores/{id}/leituras` | Lista as últimas leituras ou recebe leitura do ESP32 |
+| GET / POST | `/api/sensores` | Lista (filtro `ruaId`) ou cadastra uma régua |
+| GET / PUT / DELETE | `/api/sensores/{id}` | Detalha, atualiza ou exclui uma régua |
+| GET / POST | `/api/sensores/{id}/leituras` | Lista as últimas leituras ou registra uma leitura (em cm) |
 
-O contrato para quem faz o app e o ESP32 (campos, fluxo offline e exemplo em Arduino) está em [`docs/contrato-api.md`](docs/contrato-api.md).
+Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md).
 
 ## Arquitetura
 
@@ -151,8 +188,8 @@ Arquitetura em camadas: cada projeto só conhece o de dentro, e a Aplicação de
 
 ```mermaid
 flowchart TB
-    API["Elo.Api<br/>controllers REST, tratamento de erros, OpenAPI, página do bairro"]
-    APP["Elo.Application<br/>serviços (casos de uso), DTOs, interfaces dos repositórios"]
+    API["Elo.Api<br/>controllers REST, chave do ESP32, tratamento de erros, OpenAPI, página do bairro"]
+    APP["Elo.Application<br/>serviços, DTOs, interfaces dos repositórios e o contrato do app"]
     INFRA["Elo.Infrastructure<br/>EF Core + SQLite, repositórios, migrations, serviço em segundo plano"]
     DOM["Elo.Domain<br/>entidades, value objects, regras e a ordem do painel"]
     TESTES["Elo.Tests<br/>unitários e de integração"]
@@ -164,16 +201,21 @@ flowchart TB
 ```
 
 ```
-gs-sharp/
+elo-api-csharp/
 ├── Elo.sln
 ├── src/
 │   ├── Elo.Domain/          Bairros, Ruas, Chamadas, Sensores, Painel, Comum
-│   ├── Elo.Application/     Abstracoes (interfaces), serviços e DTOs por assunto
+│   ├── Elo.Application/     Abstracoes (interfaces), ContratoDoApp, serviços e DTOs por assunto
 │   ├── Elo.Infrastructure/  Persistencia (DbContext, Configuracoes, Migrations), Repositorios, Servicos
 │   └── Elo.Api/             Controllers, Configuracao, wwwroot, Elo.Api.http
 ├── tests/Elo.Tests/         Unitarios/Dominio, Unitarios/Aplicacao, Integracao
 └── docs/                    contrato-api.md e evidencias/
 ```
+
+**Contrato do app como camada anticorrupção.** O app fala outra língua: para ele, "chamada" é o que a liderança responde,
+o status é `preciso_ajuda` e o id da rua é texto. O [`ContratoDoAppService`](src/Elo.Application/ContratoDoApp/ContratoDoAppService.cs)
+traduz isso para o domínio (a resposta entra na `Chamada` aberta do bairro), sem duplicar regra: tudo passa pelos mesmos
+métodos de `Chamada`, `Resposta` e `Sensor`. O painel e o `/situacao` usam o mesmo [`MontadorDeSituacoes`](src/Elo.Application/Painel/MontadorDeSituacoes.cs).
 
 Modelo de domínio:
 
@@ -222,14 +264,16 @@ classDiagram
 | **Polimorfismo** | `Tipo`, `Pergunta` e `MontarMensagemParaRua` são abstratos: cada chamada responde do seu jeito (o treino avisa "TREINO" para ninguém confundir com alerta real). O painel e o link do WhatsApp usam isso sem saber o tipo |
 | **Encapsulamento** | Setters privados, coleções expostas só para leitura (`IReadOnlyCollection` sobre lista privada), construtor `internal` de [`Resposta`](src/Elo.Domain/Chamadas/Resposta.cs): só a chamada cria respostas, depois de validar janela de tempo e bairro |
 | **Value objects** | [`Lideranca`](src/Elo.Domain/Ruas/Lideranca.cs), [`PlanoDaRua`](src/Elo.Domain/Ruas/PlanoDaRua.cs), [`AvisoOficial`](src/Elo.Domain/Chamadas/AvisoOficial.cs) e [`IndicadorDaChamada`](src/Elo.Domain/Chamadas/IndicadorDaChamada.cs) são `record`s imutáveis, comparados por valor |
-| **Interfaces** | Repositórios ([`IRepository<T>`](src/Elo.Application/Abstracoes/IRepository.cs) genérico e os específicos), `IUnitOfWork` e uma interface por serviço |
+| **Interfaces** | Repositórios ([`IRepository<T>`](src/Elo.Application/Abstracoes/IRepository.cs) genérico e os específicos), `IUnitOfWork` e uma interface por serviço, inclusive `IContratoDoAppService` |
 | **Generics** | `IRepository<T> where T : Entidade`, [`RepositoryBase<T>`](src/Elo.Infrastructure/Repositorios/RepositoryBase.cs), `PaginaResultado<T>`, `ResultadoDeRegistro<T>` |
 
 ### Web API (2,5)
 
-- Controllers REST em [`src/Elo.Api/Controllers`](src/Elo.Api/Controllers) com `[ApiController]`, rotas por recurso e sub-recurso, verbos corretos e códigos 200, 201 (com `Location`), 204, 400, 404, 409 e 422.
+- Controllers REST em [`src/Elo.Api/Controllers`](src/Elo.Api/Controllers) com `[ApiController]`, rotas por recurso e sub-recurso, verbos corretos e códigos 200, 201 (com `Location`), 204, 400, 401, 404, 409 e 422.
+- **Rotas do contrato do app** ([`ContratoDoAppController`](src/Elo.Api/Controllers/ContratoDoAppController.cs)) no formato que o `elo-app` e o ESP32 já usam.
 - DTOs de entrada e saída separados das entidades (a API nunca expõe entidade), com validação por DataAnnotations e mensagens em português.
 - Erros padronizados em ProblemDetails (RFC 9457) pelo [`TratadorGlobalDeExcecoes`](src/Elo.Api/Configuracao/TratadorGlobalDeExcecoes.cs): os controllers não têm `try/catch`.
+- Filtro de autorização [`ExigeChaveDeDispositivo`](src/Elo.Api/Configuracao/ChaveDeDispositivo.cs): confere o header do ESP32 em tempo constante, antes de qualquer outra coisa.
 - Documentação OpenAPI 3.1 gerada pelo ASP.NET Core, com os comentários `///` virando descrição, exibida no **Swagger UI** e no **Scalar** ([`DocumentacaoDaApi`](src/Elo.Api/Configuracao/DocumentacaoDaApi.cs)).
 - Paginação, filtros por query string, idempotência no reenvio offline, health check e CORS para o app.
 
@@ -238,16 +282,16 @@ classDiagram
 - [`EloDbContext`](src/Elo.Infrastructure/Persistencia/EloDbContext.cs) com Fluent API em classes `IEntityTypeConfiguration` ([`Configuracoes`](src/Elo.Infrastructure/Persistencia/Configuracoes)).
 - **Herança TPH**: `ChamadaReal` e `ChamadaTreino` na tabela `Chamadas`, com a coluna `Discriminador`.
 - **Owned types** para os value objects, **coleção primitiva** (lista do plano salva em JSON), enums gravados como texto, conversor de datas para UTC.
-- **Índice único filtrado** que garante no banco uma chamada aberta por bairro, e índice único no `IdLocal` das respostas.
-- [Migration inicial](src/Elo.Infrastructure/Persistencia/Migrations) aplicada sozinha na inicialização.
+- **Índice único filtrado** que garante no banco uma chamada aberta por bairro, e índice único no id local das respostas.
+- [Migrations](src/Elo.Infrastructure/Persistencia/Migrations) aplicadas sozinhas na inicialização (a segunda registra a adaptação ao contrato do app).
 - LINQ em vários níveis:
   - [`PriorizadorDeRuas`](src/Elo.Domain/Painel/PriorizadorDeRuas.cs): `Where`, `OrderBy`/`ThenBy`/`ThenByDescending` e concatenação: **é o LINQ que ordena as ruas em silêncio**;
   - [`IndicadorDaChamada`](src/Elo.Domain/Chamadas/IndicadorDaChamada.cs): `GroupBy`, `Min`, `Any`, `Count`, `Average`;
-  - [`SensorRepository`](src/Elo.Infrastructure/Repositorios/SensorRepository.cs): `SelectMany`, subconsulta com `OrderByDescending().FirstOrDefault()` e **query syntax com dois `join`**;
+  - [`SensorRepository`](src/Elo.Infrastructure/Repositorios/SensorRepository.cs): `SelectMany`, subconsulta com `OrderByDescending().FirstOrDefault()`, `MaxBy` e **query syntax com dois `join`**;
   - [`BairroRepository`](src/Elo.Infrastructure/Repositorios/BairroRepository.cs): projeção direto para DTO com subconsultas;
-  - [`ChamadaRepository`](src/Elo.Infrastructure/Repositorios/ChamadaRepository.cs): filtros montados aos poucos, filtro por subclasse (`is ChamadaReal`), `Skip`/`Take`, `ExecuteDeleteAsync`;
+  - [`ChamadaRepository`](src/Elo.Infrastructure/Repositorios/ChamadaRepository.cs): filtros montados aos poucos, filtro por subclasse (`is ChamadaReal`), a janela da chamada traduzida para SQL, `Skip`/`Take`, `ExecuteDeleteAsync`;
   - [`LinhaDoTempo`](src/Elo.Application/Chamadas/LinhaDoTempo.cs): `Concat` de eventos de origens diferentes, `MinBy`, `OrderBy`;
-  - [`PainelService`](src/Elo.Application/Painel/PainelService.cs): `ToLookup`, `Sum`, `GroupBy` para a média por tipo.
+  - [`MontadorDeSituacoes`](src/Elo.Application/Painel/MontadorDeSituacoes.cs) e [`PainelService`](src/Elo.Application/Painel/PainelService.cs): `ToLookup`, `Sum`, `GroupBy` para a média por tipo.
 
 ### Programação assíncrona (1,0)
 
@@ -258,12 +302,12 @@ classDiagram
 ### Qualidade do código (2,0)
 
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
-- Regras de negócio no domínio, validação de entrada na borda, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
+- Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **83 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)):
-  - 48 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento);
-  - 15 unitários dos serviços com **Moq** e relógio falso (`FakeTimeProvider`);
-  - 20 de integração com a API inteira (`WebApplicationFactory`) e um banco SQLite temporário por classe.
+- **115 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)):
+  - 51 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento);
+  - 29 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`) e a tradução para o formato do app;
+  - 35 de integração com a API inteira (`WebApplicationFactory`) e um banco SQLite temporário por classe, incluindo as rotas do contrato e a chave do ESP32.
 
 ## Regras de negócio
 
@@ -272,22 +316,24 @@ classDiagram
 | Chamada real só existe com aviso oficial (o Elo não cria alerta próprio) | `ChamadaReal` |
 | Treino dura de 5 a 180 minutos (padrão 30) e termina sozinho | `ChamadaTreino` |
 | Só uma chamada aberta por bairro (no serviço e no banco) | `ChamadaService` + índice filtrado |
-| "Preciso de ajuda" exige a quantidade de pessoas; as outras situações não aceitam | `Resposta` |
+| A quantidade de pessoas é opcional (o contrato do app permite nulo); quando vem, vai de 1 a 500 | `Resposta` |
+| Observação de até 200 caracteres, com CPF, telefone e e-mail mascarados | `Resposta`, `FiltroDeDadosPessoais` |
 | Resposta vale se foi **dada** dentro da janela da chamada, mesmo chegando depois (offline) | `Chamada.AceitaRespostaDadaEm` |
-| Mesmo `idLocal` reenviado devolve a resposta salva (200), sem duplicar | `RespostaService` + índice único |
+| Resposta enviada pelo app entra na chamada do bairro aberta na hora do `criadaEm`; sem chamada, 422 | `ContratoDoAppService` |
+| Mesmo id local reenviado devolve a resposta salva (200), sem duplicar | `RespostaService`, `ContratoDoAppService` + índice único |
 | A resposta mais recente da rua é a que vale no painel | `SituacaoDaRua` |
 | "Vou até lá" só conta se foi marcado depois da última resposta da rua | `SituacaoDaRua` |
-| Ordem do painel: ajuda (sem ninguém a caminho, depois quem espera há mais tempo) → silêncio (sensor acima do limite, depois risco da rua) → água subindo → tudo bem | `PriorizadorDeRuas` |
+| Ordem do painel: ajuda (sem ninguém a caminho, depois quem espera há mais tempo) → silêncio (régua acima do limite, depois risco da rua) → água subindo → tudo bem | `PriorizadorDeRuas` |
 | Indicador conta a hora em que a resposta **chegou**, não a hora do toque | `IndicadorDaChamada` |
-| CPF, telefone e e-mail digitados na observação são mascarados | `FiltroDeDadosPessoais` |
+| Leitura da régua no limite ou acima vira alerta; guarda o limite que valia na hora | `Sensor`, `LeituraSensor` |
+| O ESP32 só grava leitura com a chave do dispositivo | `ExigeChaveDeDispositivo` |
 | Respostas com mais de 30 dias são apagadas; o indicador fica guardado na chamada | `RetencaoService` |
 | Rua com histórico não é excluída (é desativada); bairro com chamadas não é excluído | `RuaService`, `BairroService` |
-| Leitura do sensor no limite ou acima vira alerta; guarda o limite que valia na hora | `Sensor`, `LeituraSensor` |
 
 ## Evidências de funcionamento
 
-- [`docs/evidencias/fluxo-completo.md`](docs/evidencias/fluxo-completo.md): 16 requisições reais feitas contra a API rodando (painel antes e depois, reenvio offline, erros 400/404/409/422, sensor, encerramento, treino e indicadores).
-- [`docs/evidencias/resultado-dos-testes.txt`](docs/evidencias/resultado-dos-testes.txt): os 83 testes aprovados.
+- [`docs/evidencias/fluxo-completo.md`](docs/evidencias/fluxo-completo.md): 24 requisições reais feitas contra a API rodando, em três partes: a API completa (painel antes e depois, reenvio offline, erros 400/404/409/422), as **rotas do contrato do app e do ESP32** (`/situacao`, `/chamadas`, `/leituras` com 401 sem chave e 204 com chave, `/regua`, `/ruas/{id}/plano`) e o fim da chamada com o indicador.
+- [`docs/evidencias/resultado-dos-testes.txt`](docs/evidencias/resultado-dos-testes.txt): os 115 testes aprovados.
 
 **Página do resumo do bairro** (a régua mostra o indicador de 15 minutos; ruas em silêncio têm o marcador vazado):
 
@@ -304,12 +350,13 @@ classDiagram
 ## Decisões e limitações
 
 - **SQLite** para quem avaliar rodar sem instalar banco. Trocar para Oracle ou SQL Server muda só o provedor no `AddInfrastructure` e as migrations.
-- **Sem autenticação** nesta versão: o foco da matéria é a API. O próximo passo seria login do coordenador (JWT) e uma chave por sensor.
+- **Sem login de usuário** nesta versão, como no contrato do app ("o app não faz login"). O ESP32 usa uma chave; hoje é **uma chave para todos os dispositivos**. O próximo passo seria uma chave por régua e login do coordenador.
 - **Datas em UTC** na API; o app converte para o horário local.
-- A API não busca avisos do INMET sozinha: o app já faz isso e manda a referência do aviso ao abrir a chamada real.
-- O `docs/contrato-api.md` citado na proposta não estava disponível; escrevemos o contrato implementado em [`docs/contrato-api.md`](docs/contrato-api.md) para o app comparar.
+- O contrato do app recomenda um `GET /avisos?codigoIbge=` que filtre o INMET no servidor. **Não foi feito**: hoje o app continua buscando o INMET direto.
+- O `bateriaPercentual` do ESP32 é aceito, mas não é guardado (a régua simulada não tem bateria).
+- Sem chamada aberta, `POST /chamadas` devolve 422 e o app deixa a resposta pendente para tentar de novo. Abrir a chamada é papel do coordenador (`/api/bairros/{id}/chamadas`).
 - O mascaramento acha CPF, telefone e e-mail; nomes e doenças ficam com o módulo de Cybersecurity da CitizenTech.
 
 ## Uso de IA
 
-A API foi feita com ajuda de IA (Claude Code). O prompt, as perguntas feitas e o que precisa ser revisado pela equipe estão em [`prompts.md`](prompts.md).
+A API foi feita com ajuda de IA (Claude Code). Os prompts, as perguntas feitas e o que precisa ser revisado pela equipe estão em [`prompts.md`](prompts.md).

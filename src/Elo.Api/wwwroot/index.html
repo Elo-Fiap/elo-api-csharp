@@ -200,6 +200,7 @@
 
     const hora = (iso) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const numero = (valor) => Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+    const metros = (centimetros) => (Number(centimetros) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     async function buscar(caminho) {
       const resposta = await fetch(caminho, { headers: { Accept: "application/json" } });
@@ -243,7 +244,7 @@
 
       const sensor = rua.sensor
         ? el("span", { class: rua.sensor.acimaDoLimite ? "alerta" : null },
-            ` Sensor: ${numero(rua.sensor.nivelCm)} cm (limite ${numero(rua.sensor.limiteCm)} cm)${rua.sensor.acimaDoLimite ? ", acima do limite." : "."}`)
+            ` Régua: ${metros(rua.sensor.nivelCm)} m (limite ${metros(rua.sensor.limiteCm)} m)${rua.sensor.acimaDoLimite ? ", acima do limite." : "."}`)
         : null;
 
       const acoes = [];

@@ -1,118 +1,81 @@
-# Contrato da Elo API (para o app e o ESP32)
+# Contrato da Elo API com o app e a régua
 
-A proposta citava um `docs/contrato-api.md` no repositório do app, para quem fizesse o C# validar.
-Esse arquivo não estava disponível, então este é o contrato **implementado** nesta API.
-Quem cuida do app pode comparar com o que já usa e avisar o que precisa mudar.
+O contrato oficial é o [`docs/contrato-api.md` do `elo-app`](https://github.com/Elo-Fiap/elo-app/blob/main/docs/contrato-api.md),
+escrito para os colegas de C#, SOA e Physical Computing. Esta API implementa as rotas dele que são da "API do bairro",
+**sem o prefixo `/api`**, do jeito que o app (`src/services/bairro.ts`) e a régua (`sketch.ino`) já chamam.
 
+A API também tem rotas próprias em `/api/...` (abrir e encerrar chamadas, painel completo, indicadores, cadastros).
 A referência completa e sempre atualizada é o OpenAPI: `GET /openapi/v1.json`, com telas em `/swagger` e `/scalar`.
 
-## Convenções
+## Conferência com o contrato do app
 
-| Item | Regra |
-|---|---|
-| Formato | JSON, nomes em camelCase (`ruaId`, `respondidaEm`) |
-| Enums | Texto: `"PrecisoDeAjuda"`, não `3` |
-| Datas | ISO 8601. A API devolve sempre em UTC (`...Z`). Na entrada, aceita qualquer fuso (`2026-11-09T18:20:00-03:00`) |
-| Erros | ProblemDetails (RFC 9457): `{ "title", "status", "detail" }`. Validação de campos traz `errors` |
-| Status | 200 ok, 201 criado (com `Location`), 204 excluído, 400 corpo inválido, 404 não encontrado, 409 conflito, 422 regra de negócio |
-| Dados | Sem cadastro de moradores. Da liderança, só apelido e WhatsApp |
+Conferido lendo o contrato e o código do app (`src/services/bairro.ts`, `src/services/http.ts`, `src/types/index.ts`) em 09/11/2026.
+Cada item tem teste de integração em [`tests/Elo.Tests/Integracao/ContratoDoAppApiTests.cs`](../tests/Elo.Tests/Integracao/ContratoDoAppApiTests.cs).
 
-## Fluxo do app da liderança (telas Agora, Preciso de ajuda e Recebido)
-
-1. Descobrir a chamada aberta do bairro: `GET /api/bairros` → campo `chamadaAbertaId`
-   (ou `GET /api/chamadas?bairroId=1&status=Aberta`).
-2. Mostrar a pergunta e o aviso: `GET /api/chamadas/{id}` → `pergunta`, `aviso` (só em chamada real).
-3. Régua d'água da rua: `GET /api/ruas/{ruaId}` → `sensores[].ultimaLeitura.nivelCm`.
-4. Responder em um toque:
-
-```http
-POST /api/chamadas/{id}/respostas
-Content-Type: application/json
-
-{
-  "idLocal": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
-  "ruaId": 6,
-  "situacao": "PrecisoDeAjuda",
-  "pessoas": 4,
-  "observacao": "Família ilhada no térreo",
-  "respondidaEm": "2026-11-09T18:20:00-03:00"
-}
-```
-
-| Campo | Obrigatório | Observação |
+| Item do contrato | Nesta API | Confere? |
 |---|---|---|
-| `idLocal` | Recomendado | UUID gerado no celular. **É o que permite o reenvio offline sem duplicar** |
-| `ruaId` | Sim | |
-| `situacao` | Sim | `TudoBem`, `AguaSubindo` ou `PrecisoDeAjuda` |
-| `pessoas` | Só em `PrecisoDeAjuda` | 1 a 500. Em outra situação, a API recusa (422) |
-| `observacao` | Não | Até 280 caracteres. CPF, telefone e e-mail são trocados por marcadores antes de salvar |
-| `canal` | Não | `App` (padrão), `Sms`, `WhatsApp`, `Ligacao`, `Presencial` |
-| `respondidaEm` | Não | Hora do toque no celular. Vazio = hora de chegada |
+| `GET /situacao` com `bairro`, `chamadaIniciadaEm` e `ruas[]` (`id`, `nome`, `status`, `respondidaEm`) | Igual | Sim |
+| `status`: `tudo_bem`, `agua_subindo`, `preciso_ajuda`; silêncio = `null` | Igual | Sim |
+| `chamadaIniciadaEm` nulo sem chamada em andamento | Igual (e todas as ruas em silêncio) | Sim |
+| Resposta de chamada anterior não vale: a rua volta a `null` | Só contam as respostas da chamada aberta | Sim |
+| `respondidaEm` é o `criadaEm` recebido, para o app comparar com o dele | Mesmo instante, no formato do `toISOString()` (`2026-11-05T15:00:00.000Z`) | Sim |
+| Ordem: o app ordena; o LINQ do servidor pode ordenar também | Vem na ordem do painel (quem pediu ajuda, depois silêncio) | Sim |
+| `POST /chamadas` com `id` criado no app, idempotente | `id` de até 64 caracteres; o mesmo `id` devolve 200 com o registro existente | Sim |
+| Resposta `201` (ou `200` se já existia) | 201 e 200, **sempre com corpo JSON** (o `http.ts` do app lê o corpo de todo 2xx que não seja 204) | Sim |
+| `pessoas` e `observacao` podem ser nulos | Aceitos nulos; `pessoas`, quando vem, de 1 a 500 | Sim |
+| `observacao` com mais de 200 caracteres é recusada | 400 | Sim |
+| A observação não vai para log | Não vai (pode ter dado pessoal digitado sem querer) | Sim |
+| `GET /regua` com `reguaId`, `local`, `nivelMetros`, `limiteMetros`, `medidaEm` | Igual, em metros | Sim |
+| O limite fica no servidor, por régua | `LimiteAlertaCm` de cada régua (a `regua-exemplo` vem com 1,20 m) | Sim |
+| `GET /ruas/{id}/plano` com `ruaId`, `ruaNome`, `pontoEncontro`, `rotaSaida`, `abrigo`, `itensParaLevar`, `contatos` | Igual; contatos: Defesa Civil 199 e Bombeiros 193 | Sim |
+| `404` quando a rua não tem plano | 404 (também para id que não existe) | Sim |
+| `POST /leituras` com o header `X-Chave-Dispositivo` | Conferido por um filtro, antes de ler o corpo; sem chave ou com chave errada, 401 | Sim |
+| Corpo `{ reguaId, nivelMetros, medidaEm?, bateriaPercentual? }` | Igual; `nivelMetros` nulo dá 400 | Sim |
+| `medidaEm` omitido: vale a hora de recebimento | Igual | Sim |
+| Resposta `204` | 204, sem corpo | Sim |
+| A chave fica fora do repositório | Variável de ambiente `Dispositivos__Chave` ou `dotnet user-secrets` | Sim |
+| Recomendação: `GET /avisos?codigoIbge=` filtrando o INMET no servidor | **Não feito**. O app segue buscando o INMET direto | Não |
 
-Respostas da API:
+## O que o contrato não dizia e foi decidido aqui
 
-- **201**: resposta nova (tela "Recebido").
-- **200**: o mesmo `idLocal` já tinha chegado. O app pode marcar como enviada e apagar da fila local.
-- **422**: regra de negócio (ex.: faltou `pessoas`, resposta fora do horário da chamada).
-
-### Sem internet
-
-O app guarda a resposta com `idLocal` e `respondidaEm`, e reenvia quando a rede volta.
-A API aceita a resposta mesmo se a chamada já foi encerrada, desde que ela tenha sido **dada** dentro do horário da chamada.
-Para o indicador de 15 minutos conta a hora em que a resposta **chegou** (`recebidaEm`).
-
-## Fluxo do coordenador (tela Bairro)
-
-| Ação | Requisição |
+| Ponto | Decisão |
 |---|---|
-| Ver o painel da chamada aberta | `GET /api/bairros/{id}/painel` |
-| Abrir chamada real | `POST /api/bairros/{id}/chamadas` com `{ "tipo": "Real", "aviso": { "fonte": "INMET", "identificador": "...", "evento": "Acumulado de Chuva", "severidade": "Perigo" } }` |
-| Abrir treino | `POST /api/bairros/{id}/chamadas` com `{ "tipo": "Treino", "duracaoMinutos": 30 }` |
-| Registrar resposta recebida por SMS/WhatsApp/ligação | `POST /api/chamadas/{id}/respostas` com `"canal": "Sms"` |
-| Marcar "Vou até lá" | `POST /api/chamadas/{id}/acoes` com `{ "ruaId": 7, "tipo": "VouAteLa" }` |
-| Encerrar | `POST /api/chamadas/{id}/encerramento` |
-| Ver o registro | `GET /api/chamadas/{id}/registro` |
-| Indicador de impacto | `GET /api/bairros/{id}/indicadores` |
+| Em qual chamada entra a resposta do app (o `POST /chamadas` não diz) | Na chamada do bairro da rua cuja janela inclui o `criadaEm`. Uma resposta guardada offline vale mesmo se chegar depois do encerramento |
+| Resposta sem chamada aberta | **422**. O app trata como falha e tenta de novo depois |
+| Quem abre a chamada | O coordenador, pela API completa: `POST /api/bairros/{id}/chamadas` (real, com o aviso oficial, ou treino) |
+| Qual bairro as rotas do app atendem | O de `ContratoDoApp:BairroId` no `appsettings.json` ("o acesso do piloto vai por URL própria do bairro"). O `GET /situacao` aceita `?bairroId=` para testes |
+| Formato do id da rua | O número da rua como texto (`"7"`). O app já converte com `String(r.id)` |
+| Qual régua o `GET /regua` mostra | A de `ContratoDoApp:ReguaPadrao` (`regua-exemplo`, o id fixo no firmware), ou outra com `?reguaId=` |
+| Maiúsculas no `reguaId` | Não diferencia: `REGUA-EXEMPLO` e `regua-exemplo` são a mesma régua |
+| Chave não configurada no servidor | Em desenvolvimento, `POST /leituras` aceita sem chave (para testar no Swagger). Em qualquer outro ambiente, 401 |
+| `bateriaPercentual` | Aceito, mas não guardado nesta versão |
 
-Cada item de `ruas` no painel traz `posicao`, `status` (`PrecisaDeAjuda`, `EmSilencio`, `AguaSubindo`, `TudoBem`),
-a última resposta, o sensor e um `linkWhatsApp` com a mensagem pronta (no treino, a mensagem avisa que é simulado).
+## Exemplos
 
-## Plano da rua (tela Plano, abre sem internet)
-
-`GET /api/ruas/{id}/plano` → `rota`, `pontoDeEncontro`, `abrigo`, `itensParaLevar[]`, `atualizadoEm`.
-O app guarda uma cópia e compara `atualizadoEm` para saber se precisa baixar de novo.
-
-## Registro (tela Registro)
-
-`GET /api/ruas/{id}/registro` → respostas da rua agrupadas por mês (`"mes": "2026-11"`).
-As respostas são apagadas pela API depois de 30 dias (privacidade); o indicador das chamadas encerradas continua guardado.
-
-## ESP32 (Physical Computing)
+App, resposta da liderança:
 
 ```http
-POST /api/sensores/{id}/leituras
+POST /chamadas
 Content-Type: application/json
 
-{ "nivelCm": 42.5 }
+{ "id": "m3k9x2a-7f4q1b2c", "ruaId": "8", "status": "agua_subindo", "pessoas": null, "observacao": "Água na calçada", "criadaEm": "2026-11-09T18:20:00.000Z" }
 ```
 
-- `nivelCm`: nível da água em cm (0 a 500), calculado no ESP32 a partir da distância do HC-SR04.
-- `medidaEm` é opcional; sem ele, vale a hora de chegada (o ESP32 no Wokwi não precisa de relógio).
-- A resposta (201) traz `acimaDoLimite`. O buzzer continua sendo decidido no próprio ESP32, mesmo sem internet.
-- O Wokwi só alcança endereço público: a API precisa estar publicada (por exemplo, na VM Linux).
+Régua (ESP32), igual ao que o `sketch.ino` monta:
 
-Exemplo em Arduino (ESP32):
+```http
+POST /leituras
+Content-Type: application/json
+X-Chave-Dispositivo: <chave da régua, fora do repositório>
 
-```cpp
-#include <WiFi.h>
-#include <HTTPClient.h>
-
-void enviarLeitura(float nivelCm) {
-  HTTPClient http;
-  http.begin("http://SEU-IP-PUBLICO:5080/api/sensores/1/leituras");
-  http.addHeader("Content-Type", "application/json");
-  int status = http.POST("{\"nivelCm\":" + String(nivelCm, 1) + "}");
-  Serial.printf("API respondeu %d\n", status); // 201 = leitura registrada
-  http.end();
-}
+{"reguaId":"regua-exemplo","nivelMetros":1.42}
 ```
+
+As respostas reais dessas chamadas estão em [`docs/evidencias/fluxo-completo.md`](evidencias/fluxo-completo.md), parte 2.
+
+## Para ligar
+
+- **App:** `EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:5080` (sem `/api` e sem barra no final; o app já tira a barra).
+- **Régua:** o Wokwi só alcança endereço público. Publique a API (por exemplo, na VM Linux de Sistemas Operacionais) com
+  `Dispositivos__Chave` configurada e use a mesma chave no firmware. A régua recomenda HTTP simples, porque o HTTPS
+  no ESP32 simulado levou de 6,5 a 7,7 segundos e falhou com o buzzer tocando.

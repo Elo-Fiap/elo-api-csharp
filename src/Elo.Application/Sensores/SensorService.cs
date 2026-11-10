@@ -55,7 +55,7 @@ public sealed class SensorService(
             throw RecursoNaoEncontradoException.Rua(ruaId);
         }
 
-        var codigo = request.Codigo.Trim().ToUpperInvariant();
+        var codigo = Sensor.NormalizarCodigo(request.Codigo);
         if (await sensores.ExisteComCodigoAsync(codigo, cancellationToken))
         {
             throw new ConflitoException($"Já existe um sensor com o código {codigo}.");

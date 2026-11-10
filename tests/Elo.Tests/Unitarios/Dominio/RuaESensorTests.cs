@@ -76,9 +76,9 @@ public class SensorTests
     }
 
     [Fact]
-    public void Codigo_do_sensor_fica_em_maiusculas()
+    public void Codigo_do_sensor_fica_em_minusculas_como_o_reguaId_do_ESP32()
     {
-        Assert.Equal("ESP32-TESTE", NovoSensor().Codigo);
+        Assert.Equal("regua-teste", new Sensor(1, " REGUA-Teste ", "Ponte", 120).Codigo);
     }
 
     [Fact]

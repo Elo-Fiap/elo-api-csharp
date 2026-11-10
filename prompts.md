@@ -22,6 +22,22 @@ Anexos enviados junto com o prompt:
 >
 > (link: https://github.com/Elo-Fiap/elo-regua-esp32.git)
 
+A IA viu que a conta só tinha leitura no `elo-regua-esp32` (a parte de Physical Computing) e que a organização
+bloqueia fork. Ao ler o `elo-app`, achou o contrato oficial da API (`docs/contrato-api.md`), que até então não estava
+disponível. As respostas dadas às perguntas dela foram:
+
+> criei um chamado gs-csharp, adiciona la
+
+(o repositório criado na organização é o `Elo-Fiap/elo-api-csharp`)
+
+> Adaptar antes do PR
+
+> bora filho faz oq vc falou
+
+Com isso, a IA adaptou a API ao contrato do app (rotas `/situacao`, `/chamadas`, `/regua`, `/ruas/{id}/plano` e
+`/leituras` com a chave do ESP32), ajustou as regras (pessoas opcional, observação de até 200 caracteres, id em texto),
+rodou os 115 testes, gerou as evidências de novo e abriu o pull request no `elo-api-csharp`.
+
 ## Perguntas que a IA fez e as respostas
 
 | Pergunta | Resposta escolhida |
@@ -46,6 +62,7 @@ Antes da entrega, revisem juntos o código, principalmente:
 - `src/Elo.Domain/Chamadas/Chamada.cs` (herança e polimorfismo);
 - `src/Elo.Domain/Painel/PriorizadorDeRuas.cs` (o LINQ que ordena as ruas em silêncio);
 - `src/Elo.Infrastructure/Persistencia/Configuracoes/ChamadaConfiguration.cs` (mapeamento TPH no EF Core);
-- `src/Elo.Application/Chamadas/RespostaService.cs` (reenvio offline sem duplicar).
+- `src/Elo.Application/Chamadas/RespostaService.cs` (reenvio offline sem duplicar);
+- `src/Elo.Application/ContratoDoApp/ContratoDoAppService.cs` (como o app e a régua conversam com a API).
 
 Se usarem IA para mudar algo depois, acrescentem o prompt aqui.

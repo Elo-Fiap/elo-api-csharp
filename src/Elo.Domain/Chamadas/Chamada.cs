@@ -78,7 +78,7 @@ public abstract class Chamada : Entidade
         (FimDaJanela is not DateTime fim || respondidaEm <= fim);
 
     public Resposta RegistrarResposta(
-        Guid idLocal,
+        string? idLocal,
         Rua rua,
         SituacaoRua situacao,
         int? pessoas,

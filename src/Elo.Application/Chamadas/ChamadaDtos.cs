@@ -83,10 +83,11 @@ public sealed record ChamadaDto(
 public sealed record RegistrarRespostaRequest
 {
     /// <summary>
-    /// Id gerado no celular. Se a mesma resposta for reenviada (depois de ficar offline),
-    /// a API devolve a que já está salva, sem duplicar.
+    /// Id gerado no celular (texto, até 64 caracteres). Se a mesma resposta for reenviada
+    /// (depois de ficar offline), a API devolve a que já está salva, sem duplicar.
     /// </summary>
-    public Guid? IdLocal { get; init; }
+    [StringLength(64, ErrorMessage = Mensagens.TamanhoMaximo)]
+    public string? IdLocal { get; init; }
 
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
     public int? RuaId { get; init; }
@@ -95,12 +96,12 @@ public sealed record RegistrarRespostaRequest
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
     public SituacaoRua? Situacao { get; init; }
 
-    /// <summary>Quantas pessoas precisam de ajuda. Obrigatório só em PrecisoDeAjuda.</summary>
+    /// <summary>Quantas pessoas, se a liderança informou (opcional, de 1 a 500).</summary>
     [Range(1, 500, ErrorMessage = Mensagens.Intervalo)]
     public int? Pessoas { get; init; }
 
-    /// <summary>Observação opcional. CPF, telefone e e-mail são mascarados antes de salvar.</summary>
-    [StringLength(280, ErrorMessage = Mensagens.TamanhoMaximo)]
+    /// <summary>Observação opcional, até 200 caracteres. CPF, telefone e e-mail são mascarados antes de salvar.</summary>
+    [StringLength(200, ErrorMessage = Mensagens.TamanhoMaximo)]
     public string? Observacao { get; init; }
 
     /// <summary>App (padrão), Sms, WhatsApp, Ligacao ou Presencial.</summary>
@@ -112,7 +113,7 @@ public sealed record RegistrarRespostaRequest
 
 public sealed record RespostaDto(
     int Id,
-    Guid IdLocal,
+    string IdLocal,
     int ChamadaId,
     int RuaId,
     SituacaoRua Situacao,

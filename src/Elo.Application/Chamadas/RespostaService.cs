@@ -21,7 +21,8 @@ public sealed class RespostaService(
         CancellationToken cancellationToken = default)
     {
         // Reenvio offline: se o celular já mandou esta resposta, devolvemos a salva (idempotência).
-        if (request.IdLocal is Guid idLocal && idLocal != Guid.Empty)
+        var idLocal = string.IsNullOrWhiteSpace(request.IdLocal) ? null : request.IdLocal.Trim();
+        if (idLocal is not null)
         {
             var existente = await chamadas.ObterRespostaPorIdLocalAsync(idLocal, cancellationToken);
             if (existente is not null)
@@ -40,7 +41,7 @@ public sealed class RespostaService(
         var agora = relogio.GetUtcNow().UtcDateTime;
 
         var resposta = chamada.RegistrarResposta(
-            request.IdLocal ?? Guid.NewGuid(),
+            idLocal,
             rua,
             request.Situacao ?? throw new RegraDeNegocioException("Informe a situação da rua."),
             request.Pessoas,

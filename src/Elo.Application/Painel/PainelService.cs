@@ -19,14 +19,14 @@ public interface IPainelService
 }
 
 /// <summary>
-/// Monta o painel do coordenador: busca os dados (EF Core) e aplica a regra de prioridade
-/// do domínio (<see cref="PriorizadorDeRuas"/>, em LINQ).
+/// Monta o painel do coordenador: o <see cref="MontadorDeSituacoes"/> busca os dados (EF Core)
+/// e aplica a regra de prioridade do domínio (<see cref="PriorizadorDeRuas"/>, em LINQ).
 /// </summary>
 public sealed class PainelService(
     IChamadaRepository chamadas,
     IBairroRepository bairros,
     IRuaRepository ruas,
-    ISensorRepository sensores,
+    MontadorDeSituacoes montador,
     TimeProvider relogio) : IPainelService
 {
     private DateTime Agora => relogio.GetUtcNow().UtcDateTime;
@@ -98,28 +98,13 @@ public sealed class PainelService(
         var bairro = await bairros.ObterPorIdAsync(chamada.BairroId, cancellationToken)
             ?? throw RecursoNaoEncontradoException.Bairro(chamada.BairroId);
 
-        var ruasAtivas = await ruas.ListarPorBairroAsync(chamada.BairroId, null, null, incluirInativas: false, cancellationToken);
-        var respostas = await chamadas.ListarRespostasAsync(chamada.Id, cancellationToken: cancellationToken);
-        var acoes = await chamadas.ListarAcoesAsync(chamada.Id, cancellationToken);
+        var situacoes = await montador.MontarAsync(chamada, cancellationToken);
+        var ordenadas = situacoes.RuasEmOrdem;
 
-        // Para uma chamada antiga, o sensor mostra a leitura daquela época, não a de agora.
-        var referencia = chamada.FimDaJanela is DateTime fim && fim < agora ? fim : agora;
-        var leituras = await sensores.ObterUltimaLeituraPorRuaAsync(chamada.BairroId, referencia, cancellationToken);
-
-        // ToLookup agrupa uma vez só; depois cada rua pega as suas respostas e ações direto.
-        var respostasPorRua = respostas.ToLookup(resposta => resposta.RuaId);
-        var acoesPorRua = acoes.ToLookup(acao => acao.RuaId);
-
-        var situacoes = ruasAtivas.Select(rua => SituacaoDaRua.Montar(
-            rua,
-            respostasPorRua[rua.Id],
-            acoesPorRua[rua.Id],
-            leituras.GetValueOrDefault(rua.Id)));
-
-        var ordenadas = PriorizadorDeRuas.Ordenar(situacoes);
-
-        var indicador = chamada.Resultado
-            ?? IndicadorDaChamada.Calcular(chamada.IniciadaEm, [.. ruasAtivas.Select(rua => rua.Id)], respostas);
+        var indicador = chamada.Resultado ?? IndicadorDaChamada.Calcular(
+            chamada.IniciadaEm,
+            [.. situacoes.RuasAtivas.Select(rua => rua.Id)],
+            situacoes.Respostas);
 
         var resumo = new ResumoDoPainelDto(
             PrecisamDeAjuda: ordenadas.Count(s => s.Status == StatusNoPainel.PrecisaDeAjuda),

@@ -105,7 +105,7 @@ public class SensorServiceTests
     [Fact]
     public async Task Leitura_do_ESP32_acima_do_limite_e_gravada_como_alerta()
     {
-        var sensor = new Sensor(1, "ESP32-01", "Ponte", 40).ComId(1);
+        var sensor = new Sensor(1, "regua-exemplo", "Ponte", 40).ComId(1);
         _sensores.Setup(r => r.ObterPorIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(sensor);
 
         var leitura = await CriarServico().RegistrarLeituraAsync(1, new RegistrarLeituraRequest { NivelCm = 45.5 });
@@ -119,7 +119,7 @@ public class SensorServiceTests
     public async Task Codigo_de_sensor_repetido_gera_conflito()
     {
         _ruas.Setup(r => r.ExisteAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        _sensores.Setup(r => r.ExisteComCodigoAsync("ESP32-01", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _sensores.Setup(r => r.ExisteComCodigoAsync("esp32-01", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         await Assert.ThrowsAsync<ConflitoException>(() => CriarServico().CriarAsync(new CriarSensorRequest
         {

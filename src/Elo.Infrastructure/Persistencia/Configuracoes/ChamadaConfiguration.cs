@@ -93,6 +93,7 @@ internal sealed class RespostaConfiguration : IEntityTypeConfiguration<Resposta>
         builder.ToTable("Respostas");
         builder.HasKey(resposta => resposta.Id);
 
+        builder.Property(resposta => resposta.IdLocal).HasMaxLength(Resposta.TamanhoMaximoIdLocal).IsRequired();
         builder.Property(resposta => resposta.Situacao).HasConversion<string>().HasMaxLength(20);
         builder.Property(resposta => resposta.Canal).HasConversion<string>().HasMaxLength(20);
         builder.Property(resposta => resposta.Observacao).HasMaxLength(Resposta.TamanhoMaximoObservacao);

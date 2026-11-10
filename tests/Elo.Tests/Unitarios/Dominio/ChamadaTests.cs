@@ -78,7 +78,7 @@ public class ChamadaTests
         var chamada = NovaChamadaReal();
 
         var erro = Assert.Throws<RegraDeNegocioException>(() => chamada.RegistrarResposta(
-            Guid.NewGuid(), NovaRua(1), SituacaoRua.TudoBem, null, null, CanalResposta.App,
+            Guid.NewGuid().ToString("N"), NovaRua(1), SituacaoRua.TudoBem, null, null, CanalResposta.App,
             respondidaEm: Inicio.AddMinutes(30),
             agora: Inicio.AddMinutes(10)));
 
@@ -94,7 +94,7 @@ public class ChamadaTests
 
         // Respondida aos 20 minutos (sem internet), recebida só aos 90.
         var resposta = chamada.RegistrarResposta(
-            Guid.NewGuid(), rua, SituacaoRua.AguaSubindo, null, null, CanalResposta.App,
+            Guid.NewGuid().ToString("N"), rua, SituacaoRua.AguaSubindo, null, null, CanalResposta.App,
             respondidaEm: Inicio.AddMinutes(20),
             agora: Inicio.AddMinutes(90));
 

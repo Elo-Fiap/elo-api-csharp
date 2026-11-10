@@ -66,12 +66,12 @@ Content-Type: application/json
   "tipo": "VouAteLa"
 }
 
-### Leitura do ESP32 (HC-SR04): nível da água em cm
+### Leitura da régua pela API completa: nível da água em cm (limite da régua 2: 150 cm)
 POST {{Elo}}/api/sensores/2/leituras
 Content-Type: application/json
 
 {
-  "nivelCm": 52.5
+  "nivelCm": 160
 }
 
 ### Últimas leituras do sensor
@@ -134,3 +134,40 @@ Content-Type: application/json
 
 ### Indicador de impacto do bairro (Real x Treino)
 GET {{Elo}}/api/bairros/1/indicadores
+
+# ---------------------------------------------------------------------------
+# Rotas do contrato do app (docs/contrato-api.md do elo-app), sem /api.
+# É assim que o app e a régua (ESP32) chamam a API.
+# ---------------------------------------------------------------------------
+
+### App: situação do bairro (status tudo_bem / agua_subindo / preciso_ajuda; null = silêncio)
+GET {{Elo}}/situacao
+
+### App: a liderança responde (o "id" é criado no app; reenviar o mesmo id devolve 200)
+POST {{Elo}}/chamadas
+Content-Type: application/json
+
+{
+  "id": "m3k9x2a-7f4q1b2c",
+  "ruaId": "8",
+  "status": "agua_subindo",
+  "pessoas": null,
+  "observacao": "Água na calçada",
+  "criadaEm": null
+}
+
+### App: última leitura da régua, em metros
+GET {{Elo}}/regua
+
+### App: plano da rua (404 = rua sem plano)
+GET {{Elo}}/ruas/1/plano
+
+### ESP32: leitura da régua (em desenvolvimento sem Dispositivos:Chave configurada, a chave não é exigida)
+POST {{Elo}}/leituras
+Content-Type: application/json
+X-Chave-Dispositivo: troque-pela-chave-configurada
+
+{
+  "reguaId": "regua-exemplo",
+  "nivelMetros": 1.42
+}

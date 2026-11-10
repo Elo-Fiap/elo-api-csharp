@@ -130,11 +130,13 @@ namespace Elo.Infrastructure.Persistencia.Migrations
                     b.Property<int>("ChamadaId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("IdLocal")
+                    b.Property<string>("IdLocal")
+                        .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Observacao")
-                        .HasMaxLength(280)
+                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("Pessoas")

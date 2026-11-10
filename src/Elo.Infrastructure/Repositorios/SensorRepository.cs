@@ -25,6 +25,27 @@ public sealed class SensorRepository(EloDbContext contexto) : RepositoryBase<Sen
     public Task<bool> ExisteComCodigoAsync(string codigo, CancellationToken cancellationToken = default) =>
         Conjunto.AnyAsync(sensor => sensor.Codigo == codigo, cancellationToken);
 
+    public Task<Sensor?> ObterPorCodigoAsync(string codigo, CancellationToken cancellationToken = default) =>
+        Conjunto.FirstOrDefaultAsync(sensor => sensor.Codigo == codigo, cancellationToken);
+
+    public Task<SensorComLeitura?> ObterComUltimaLeituraPorCodigoAsync(string codigo, CancellationToken cancellationToken = default) =>
+        ComUltimaLeitura(Conjunto.AsNoTracking().Where(sensor => sensor.Codigo == codigo)).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<SensorComLeitura?> ObterLeituraMaisRecenteDoBairroAsync(int bairroId, CancellationToken cancellationToken = default)
+    {
+        var sensoresDoBairro = await ComUltimaLeitura(Contexto.Ruas
+                .AsNoTracking()
+                .Where(rua => rua.BairroId == bairroId)
+                .SelectMany(rua => rua.Sensores)
+                .Where(sensor => sensor.Ativo))
+            .ToListAsync(cancellationToken);
+
+        // Poucos sensores por bairro: a escolha da leitura mais nova é feita na memória.
+        return sensoresDoBairro
+            .Where(item => item.UltimaLeitura is not null)
+            .MaxBy(item => item.UltimaLeitura!.MedidaEm);
+    }
+
     public async Task<IReadOnlyList<LeituraSensor>> ListarLeiturasAsync(int sensorId, int quantidade, CancellationToken cancellationToken = default) =>
         await Contexto.Leituras
             .AsNoTracking()

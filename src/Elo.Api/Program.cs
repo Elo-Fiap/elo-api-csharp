@@ -21,6 +21,7 @@ builder.Services.AddProblemDetails();                                  // erros 
 builder.Services.AddExceptionHandler<TratadorGlobalDeExcecoes>();      // exceção -> 404/409/422/500
 builder.Services.AddDocumentacaoDaApi();                               // OpenAPI
 builder.Services.AddHealthChecks().AddDbContextCheck<EloDbContext>("banco");
+builder.Services.AddOptions<DispositivosOptions>().BindConfiguration(DispositivosOptions.Secao); // chave do ESP32
 
 // O app (Expo) e o ESP32 chamam a API de outras origens.
 builder.Services.AddCors(opcoes => opcoes.AddDefaultPolicy(politica =>

@@ -62,7 +62,13 @@ public interface IChamadaRepository : IRepository<Chamada>
 
     Task<Resposta?> ObterRespostaAsync(int chamadaId, int respostaId, CancellationToken cancellationToken = default);
 
-    Task<Resposta?> ObterRespostaPorIdLocalAsync(Guid idLocal, CancellationToken cancellationToken = default);
+    Task<Resposta?> ObterRespostaPorIdLocalAsync(string idLocal, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// A chamada do bairro cuja janela inclui <paramref name="momento"/> (aberta ou já encerrada).
+    /// Usada quando o app manda a resposta sem dizer de qual chamada ela é.
+    /// </summary>
+    Task<Chamada?> ObterDaJanelaAsync(int bairroId, DateTime momento, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AcaoCoordenador>> ListarAcoesAsync(int chamadaId, CancellationToken cancellationToken = default);
 
@@ -76,6 +82,14 @@ public interface ISensorRepository : IRepository<Sensor>
     Task<SensorComLeitura?> ObterComUltimaLeituraAsync(int id, CancellationToken cancellationToken = default);
 
     Task<bool> ExisteComCodigoAsync(string codigo, CancellationToken cancellationToken = default);
+
+    /// <summary>Sensor pelo código (o "reguaId" do ESP32), rastreado para receber leituras.</summary>
+    Task<Sensor?> ObterPorCodigoAsync(string codigo, CancellationToken cancellationToken = default);
+
+    Task<SensorComLeitura?> ObterComUltimaLeituraPorCodigoAsync(string codigo, CancellationToken cancellationToken = default);
+
+    /// <summary>O sensor ativo do bairro com a leitura mais recente.</summary>
+    Task<SensorComLeitura?> ObterLeituraMaisRecenteDoBairroAsync(int bairroId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<LeituraSensor>> ListarLeiturasAsync(int sensorId, int quantidade, CancellationToken cancellationToken = default);
 

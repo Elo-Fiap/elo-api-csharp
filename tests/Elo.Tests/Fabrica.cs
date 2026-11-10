@@ -40,7 +40,7 @@ internal static class Fabrica
         int? pessoas = null,
         int? chegouAposMinutos = null) =>
         chamada.RegistrarResposta(
-            Guid.NewGuid(),
+            Guid.NewGuid().ToString("N"),
             rua,
             situacao,
             pessoas,

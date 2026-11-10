@@ -7,26 +7,39 @@ namespace Elo.Tests.Unitarios.Dominio;
 public class RespostaTests
 {
     [Fact]
-    public void Pedir_ajuda_sem_dizer_quantas_pessoas_e_recusado()
+    public void Pedir_ajuda_sem_dizer_quantas_pessoas_e_aceito()
+    {
+        // O contrato do app permite "pessoas" nulo: a liderança pode não saber quantas pessoas são.
+        var resposta = Responder(NovaChamadaReal(), NovaRua(1), SituacaoRua.PrecisoDeAjuda, 5, pessoas: null);
+
+        Assert.True(resposta.PediuAjuda);
+        Assert.Null(resposta.Pessoas);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(501)]
+    public void Quantidade_de_pessoas_fora_da_faixa_e_recusada(int pessoas)
     {
         var erro = Assert.Throws<RegraDeNegocioException>(() =>
-            Responder(NovaChamadaReal(), NovaRua(1), SituacaoRua.PrecisoDeAjuda, 5, pessoas: null));
+            Responder(NovaChamadaReal(), NovaRua(1), SituacaoRua.PrecisoDeAjuda, 5, pessoas));
 
-        Assert.Contains("quantas pessoas", erro.Message);
+        Assert.Contains("de 1 a 500", erro.Message);
     }
 
     [Fact]
-    public void Quantidade_de_pessoas_so_vale_para_pedido_de_ajuda()
+    public void Observacao_com_mais_de_200_caracteres_e_recusada()
     {
-        Assert.Throws<RegraDeNegocioException>(() =>
-            Responder(NovaChamadaReal(), NovaRua(1), SituacaoRua.TudoBem, 5, pessoas: 3));
+        Assert.Throws<RegraDeNegocioException>(() => NovaChamadaReal().RegistrarResposta(
+            "id-longo", NovaRua(1), SituacaoRua.TudoBem, null, new string('a', 201),
+            CanalResposta.App, Inicio.AddMinutes(5), Inicio.AddMinutes(5)));
     }
 
     [Fact]
     public void Observacao_e_salva_com_cpf_e_telefone_mascarados()
     {
         var resposta = NovaChamadaReal().RegistrarResposta(
-            Guid.NewGuid(), NovaRua(1), SituacaoRua.PrecisoDeAjuda, 2,
+            "id-mascara", NovaRua(1), SituacaoRua.PrecisoDeAjuda, 2,
             "Liguem para 11 91234-5678, CPF 123.456.789-09",
             CanalResposta.App, Inicio.AddMinutes(5), Inicio.AddMinutes(5));
 
@@ -34,13 +47,23 @@ public class RespostaTests
     }
 
     [Fact]
+    public void Id_criado_no_app_e_guardado_como_texto()
+    {
+        var resposta = NovaChamadaReal().RegistrarResposta(
+            "m3k9x2a-7f4q1b2c", NovaRua(1), SituacaoRua.TudoBem, null, null,
+            CanalResposta.App, Inicio.AddMinutes(5), Inicio.AddMinutes(5));
+
+        Assert.Equal("m3k9x2a-7f4q1b2c", resposta.IdLocal);
+    }
+
+    [Fact]
     public void Sem_id_local_a_resposta_ganha_um_novo()
     {
         var resposta = NovaChamadaReal().RegistrarResposta(
-            Guid.Empty, NovaRua(1), SituacaoRua.TudoBem, null, null,
+            null, NovaRua(1), SituacaoRua.TudoBem, null, null,
             CanalResposta.Sms, Inicio.AddMinutes(5), Inicio.AddMinutes(5));
 
-        Assert.NotEqual(Guid.Empty, resposta.IdLocal);
+        Assert.False(string.IsNullOrWhiteSpace(resposta.IdLocal));
         Assert.Equal(CanalResposta.Sms, resposta.Canal);
     }
 }

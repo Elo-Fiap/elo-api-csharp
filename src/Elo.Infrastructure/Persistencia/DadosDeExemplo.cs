@@ -54,14 +54,15 @@ internal static class DadosDeExemplo
         contexto.Ruas.AddRange(ruas);
         await contexto.SaveChangesAsync(cancellationToken);
 
-        // 3. Sensores ESP32 nos pontos críticos, com leituras da última hora (a cada 10 minutos).
-        var sensorPalafitas = new Sensor(palafitas.Id, "ESP32-PANTANAL-01", "Ponte do córrego, no fim da Rua das Palafitas", 40);
-        var sensorBarqueiros = new Sensor(barqueiros.Id, "ESP32-PANTANAL-02", "Bueiro da esquina com a Rua da Várzea", 50);
-        contexto.Sensores.AddRange(sensorPalafitas, sensorBarqueiros);
+        // 3. Réguas (ESP32 + HC-SR04) nos pontos críticos, com leituras da última hora (a cada 10 minutos).
+        //    "regua-exemplo" é o id fixo no firmware da régua da equipe (repositório elo-regua-esp32), limite de 1,20 m.
+        var reguaPalafitas = new Sensor(palafitas.Id, "regua-exemplo", "Córrego do bairro, na ponte da Rua das Palafitas (simulado)", 120);
+        var reguaBarqueiros = new Sensor(barqueiros.Id, "regua-barqueiros", "Bueiro da esquina com a Rua da Várzea (simulado)", 150);
+        contexto.Sensores.AddRange(reguaPalafitas, reguaBarqueiros);
         await contexto.SaveChangesAsync(cancellationToken);
 
-        RegistrarLeituras(sensorPalafitas, agora, [14, 22, 30, 37, 42, 46]); // passa do limite de 40 cm
-        RegistrarLeituras(sensorBarqueiros, agora, [15, 20, 26, 30, 33, 35]); // abaixo do limite de 50 cm
+        RegistrarLeituras(reguaPalafitas, agora, [80, 95, 105, 112, 125, 142]);             // passa do limite de 1,20 m
+        RegistrarLeituras(reguaBarqueiros, agora.AddMinutes(-1), [60, 72, 85, 90, 94, 97]); // abaixo do limite de 1,50 m
 
         // 4. Treino de uma semana atrás, já encerrado (serve para comparar o indicador).
         var idsDasRuas = ruas.Select(rua => rua.Id).ToList();
@@ -123,6 +124,6 @@ internal static class DadosDeExemplo
     {
         var respondidaEm = inicio.AddMinutes(aposMinutos);
         var recebidaEm = inicio.AddMinutes(chegouAposMinutos ?? aposMinutos);
-        chamada.RegistrarResposta(Guid.NewGuid(), rua, situacao, pessoas, observacao, canal, respondidaEm, recebidaEm);
+        chamada.RegistrarResposta(idLocal: null, rua, situacao, pessoas, observacao, canal, respondidaEm, recebidaEm);
     }
 }

@@ -9,7 +9,7 @@ public sealed record CriarSensorRequest
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
     public int? RuaId { get; init; }
 
-    /// <summary>Código gravado no ESP32. Ex.: ESP32-PANTANAL-01.</summary>
+    /// <summary>Código gravado no ESP32 (o "reguaId" do contrato), guardado em minúsculas. Ex.: regua-exemplo.</summary>
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
     [StringLength(40, ErrorMessage = Mensagens.TamanhoMaximo)]
     [RegularExpression("^[A-Za-z0-9_-]+$", ErrorMessage = "Use só letras, números, hífen e sublinhado no código.")]
@@ -22,7 +22,7 @@ public sealed record CriarSensorRequest
 
     /// <summary>Acima deste nível (cm) a leitura vira alerta.</summary>
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
-    [Range(1, 500, ErrorMessage = Mensagens.Intervalo)]
+    [Range(1.0, 500.0, ErrorMessage = Mensagens.Intervalo)]
     public double? LimiteAlertaCm { get; init; }
 }
 
@@ -34,7 +34,7 @@ public sealed record AtualizarSensorRequest
     public string Local { get; init; } = string.Empty;
 
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
-    [Range(1, 500, ErrorMessage = Mensagens.Intervalo)]
+    [Range(1.0, 500.0, ErrorMessage = Mensagens.Intervalo)]
     public double? LimiteAlertaCm { get; init; }
 
     public bool Ativo { get; init; } = true;
@@ -45,7 +45,7 @@ public sealed record RegistrarLeituraRequest
 {
     /// <summary>Nível da água em centímetros, calculado pelo ESP32 a partir do HC-SR04.</summary>
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
-    [Range(0, 500, ErrorMessage = Mensagens.Intervalo)]
+    [Range(0.0, 500.0, ErrorMessage = Mensagens.Intervalo)]
     public double? NivelCm { get; init; }
 
     /// <summary>Hora da medição. Vazio = hora de chegada na API.</summary>

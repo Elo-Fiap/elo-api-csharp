@@ -80,7 +80,8 @@ internal static class LinhaDoTempo
     {
         var texto = resposta.Situacao switch
         {
-            SituacaoRua.PrecisoDeAjuda => $"Preciso de ajuda ({resposta.Pessoas} pessoa(s))",
+            SituacaoRua.PrecisoDeAjuda when resposta.Pessoas is int pessoas => $"Preciso de ajuda ({pessoas} pessoa(s))",
+            SituacaoRua.PrecisoDeAjuda => "Preciso de ajuda",
             SituacaoRua.AguaSubindo => "Água subindo",
             _ => "Tudo bem"
         };

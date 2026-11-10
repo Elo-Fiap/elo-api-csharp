@@ -105,10 +105,25 @@ public sealed class ChamadaRepository(EloDbContext contexto) : RepositoryBase<Ch
             .AsNoTracking()
             .FirstOrDefaultAsync(resposta => resposta.ChamadaId == chamadaId && resposta.Id == respostaId, cancellationToken);
 
-    public Task<Resposta?> ObterRespostaPorIdLocalAsync(Guid idLocal, CancellationToken cancellationToken = default) =>
+    public Task<Resposta?> ObterRespostaPorIdLocalAsync(string idLocal, CancellationToken cancellationToken = default) =>
         Contexto.Respostas
             .AsNoTracking()
             .FirstOrDefaultAsync(resposta => resposta.IdLocal == idLocal, cancellationToken);
+
+    public Task<Chamada?> ObterDaJanelaAsync(int bairroId, DateTime momento, CancellationToken cancellationToken = default)
+    {
+        // A mesma regra de Chamada.AceitaRespostaDadaEm, escrita para o banco: começou antes
+        // (com a tolerância do relógio do celular) e ainda não tinha terminado naquela hora.
+        var inicioMaximo = momento + Chamada.ToleranciaDeRelogio;
+
+        return Conjunto
+            .Where(chamada => chamada.BairroId == bairroId
+                && chamada.IniciadaEm <= inicioMaximo
+                && (chamada.EncerradaEm == null || chamada.EncerradaEm >= momento)
+                && (chamada.EncerramentoPrevistoEm == null || chamada.EncerramentoPrevistoEm >= momento))
+            .OrderByDescending(chamada => chamada.IniciadaEm)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<AcaoCoordenador>> ListarAcoesAsync(int chamadaId, CancellationToken cancellationToken = default) =>
         await Contexto.Acoes
