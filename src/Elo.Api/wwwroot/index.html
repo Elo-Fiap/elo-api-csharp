@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Elo - Resumo do bairro</title>
+  <meta name="description" content="Resumo da chamada aberta no bairro: quem pediu ajuda, quem está em silêncio e o indicador de 15 minutos.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --papel: #f3f5f4;
+      --superficie: #ffffff;
+      --tinta: #15232b;
+      --tinta-suave: #4a5a63;
+      --linha: #d5dcdf;
+      --agua: #2f6f7e;
+      --agua-clara: #cfe3e7;
+      --sinal: #c2410c;
+      --ajuda: #b42318;
+      --subindo: #8f5400;
+      --bem: #1f7a4d;
+      --silencio: #5b6770;
+      --foco: #1d4ed8;
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --papel: #10181c;
+        --superficie: #172227;
+        --tinta: #e8eef0;
+        --tinta-suave: #a9b6bc;
+        --linha: #2c3a41;
+        --agua: #5fa8b8;
+        --agua-clara: #1e3a42;
+        --sinal: #f08a4b;
+        --ajuda: #ff8a80;
+        --subindo: #f2b24c;
+        --bem: #6fd39b;
+        --silencio: #9aa8af;
+        --foco: #93c5fd;
+        color-scheme: dark;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--papel);
+      color: var(--tinta);
+      font-family: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 1.0625rem;
+      line-height: 1.5;
+    }
+
+    a { color: inherit; text-underline-offset: 0.18em; }
+    a:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+    .pagina { max-width: 68rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+    header.topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.75rem 2rem; }
+    header.topo h1 { margin: 0; font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -0.01em; }
+    header.topo .marca { font-weight: 700; color: var(--agua); }
+    .controles { display: flex; align-items: center; gap: 0.75rem; color: var(--tinta-suave); font-size: 0.9375rem; }
+    select, button { font: inherit; color: var(--tinta); background: var(--superficie); border: 1px solid var(--linha); border-radius: 6px; padding: 0.35rem 0.6rem; }
+    button { cursor: pointer; }
+
+    .aviso-simulado { margin: 0.75rem 0 0; color: var(--tinta-suave); }
+
+    .quadro { display: grid; grid-template-columns: 11rem 1fr; gap: 2rem; margin-top: 2rem; align-items: start; }
+
+    /* A régua linimétrica: o elemento marcante da página. */
+    .regua-bloco { position: sticky; top: 1rem; }
+    .regua {
+      position: relative;
+      height: 22rem;
+      width: 5.5rem;
+      background: var(--superficie);
+      border: 2px solid var(--tinta);
+      overflow: hidden;
+    }
+    .regua .agua {
+      position: absolute;
+      inset: auto 0 0 0;
+      height: var(--nivel, 0%);
+      background: var(--agua);
+      opacity: 0.85;
+      animation: encher 1.6s cubic-bezier(.2,.7,.2,1);
+    }
+    /* A água sobe do nível anterior até o atual; o valor final já está no estilo, mesmo sem animação. */
+    @keyframes encher { from { height: var(--nivel-anterior, 0%); } }
+    .regua .faixa { position: absolute; left: 0; right: 0; height: 10%; }
+    .regua .faixa .e { position: absolute; left: 0; width: 45%; top: 0; bottom: 0; }
+    .regua .faixa.par .e { background: var(--sinal); clip-path: polygon(0 0, 100% 0, 100% 20%, 40% 20%, 40% 40%, 100% 40%, 100% 60%, 40% 60%, 40% 80%, 100% 80%, 100% 100%, 0 100%); }
+    .regua .faixa.impar .e { background: var(--tinta); clip-path: polygon(0 0, 100% 0, 100% 20%, 40% 20%, 40% 40%, 100% 40%, 100% 60%, 40% 60%, 40% 80%, 100% 80%, 100% 100%, 0 100%); }
+    .regua .faixa span { position: absolute; right: 0.4rem; top: -0.1rem; font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .regua-legenda { margin: 0.75rem 0 0; max-width: 11rem; }
+    .regua-legenda strong { display: block; font-size: 2.25rem; line-height: 1; font-variant-numeric: tabular-nums; }
+
+    .chamada h2 { margin: 0; font-size: 1.375rem; line-height: 1.3; }
+    .chamada p { margin: 0.35rem 0 0; color: var(--tinta-suave); max-width: 70ch; }
+    .chamada.treino h2::after { content: " (treino)"; color: var(--sinal); }
+
+    .contagem { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
+    .contagem li { display: flex; align-items: center; gap: 0.5rem; }
+    .contagem b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+
+    ol.ruas { margin: 1.5rem 0 0; padding: 0; list-style: none; border-top: 2px solid var(--tinta); }
+    ol.ruas > li {
+      display: grid;
+      grid-template-columns: 2.25rem 1.25rem 1fr auto;
+      gap: 0.25rem 0.75rem;
+      align-items: start;
+      padding: 0.9rem 0.25rem;
+      border-bottom: 1px solid var(--linha);
+    }
+    .posicao { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
+    .marcador { width: 1rem; height: 1rem; margin-top: 0.3rem; border-radius: 50%; background: currentColor; }
+    li.EmSilencio .marcador { background: transparent; border: 2px dashed currentColor; }
+    li.PrecisaDeAjuda { color: var(--ajuda); }
+    li.EmSilencio { color: var(--silencio); }
+    li.AguaSubindo { color: var(--subindo); }
+    li.TudoBem { color: var(--bem); }
+    .rua-nome { color: var(--tinta); font-weight: 700; font-size: 1.125rem; }
+    .rua-info { grid-column: 3 / 5; color: var(--tinta-suave); font-size: 0.9375rem; margin: 0; }
+    .rua-info .alerta { color: var(--ajuda); font-weight: 700; }
+    .status { font-weight: 700; text-align: right; white-space: nowrap; }
+    .rua-acoes { grid-column: 3 / 5; margin: 0.25rem 0 0; font-size: 0.9375rem; }
+
+    .vazio, .erro { margin-top: 2rem; padding: 1.25rem; border: 2px dashed var(--linha); max-width: 46rem; }
+    .erro { border-color: var(--ajuda); }
+    .vazio p, .erro p { margin: 0 0 0.75rem; }
+
+    footer { margin-top: 2.5rem; color: var(--tinta-suave); font-size: 0.9375rem; }
+
+    @media (max-width: 720px) {
+      .quadro { grid-template-columns: 1fr; gap: 1.25rem; }
+      .regua-bloco { position: static; display: flex; align-items: flex-end; gap: 1rem; }
+      .regua { height: 9rem; width: 4rem; }
+      ol.ruas > li { grid-template-columns: 1.75rem 1.25rem 1fr; }
+      .status { grid-column: 3; text-align: left; }
+      .rua-info, .rua-acoes { grid-column: 3; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .regua .agua { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="pagina">
+    <header class="topo">
+      <h1><span class="marca">Elo</span> Resumo do bairro</h1>
+      <div class="controles">
+        <label for="bairro">Bairro</label>
+        <select id="bairro"></select>
+        <span id="atualizado" aria-live="polite"></span>
+      </div>
+    </header>
+    <p class="aviso-simulado" id="simulado" hidden>Dados simulados para a Global Solution: ruas, respostas e telefones são fictícios.</p>
+
+    <main id="conteudo" aria-busy="true">
+      <p>Carregando o bairro...</p>
+    </main>
+
+    <footer>
+      Atualiza sozinho a cada 30 segundos. Documentação da API: <a href="/swagger">Swagger</a> ou <a href="/scalar">Scalar</a>.
+    </footer>
+  </div>
+
+  <script>
+    const ROTULOS = {
+      PrecisaDeAjuda: "Precisa de ajuda",
+      EmSilencio: "Em silêncio",
+      AguaSubindo: "Água subindo",
+      TudoBem: "Tudo bem"
+    };
+    const INTERVALO_MS = 30000;
+    let nivelAnterior = 0; // a água parte do nível anterior, para não "esvaziar" a cada atualização
+    const seletor = document.getElementById("bairro");
+    const conteudo = document.getElementById("conteudo");
+
+    // Cria elementos com textContent: o que vem da API nunca vira HTML (a observação é texto livre).
+    function el(tag, atributos, ...filhos) {
+      const no = document.createElement(tag);
+      for (const [chave, valor] of Object.entries(atributos || {})) {
+        if (valor === undefined || valor === null || valor === false) continue;
+        if (chave === "class") no.className = valor;
+        else no.setAttribute(chave, valor === true ? "" : valor);
+      }
+      for (const filho of filhos.flat()) {
+        if (filho === null || filho === undefined || filho === false) continue;
+        no.append(filho instanceof Node ? filho : document.createTextNode(String(filho)));
+      }
+      return no;
+    }
+
+    const hora = (iso) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const numero = (valor) => Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+    const metros = (centimetros) => (Number(centimetros) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    async function buscar(caminho) {
+      const resposta = await fetch(caminho, { headers: { Accept: "application/json" } });
+      if (!resposta.ok) {
+        const erro = new Error(`HTTP ${resposta.status}`);
+        erro.status = resposta.status;
+        throw erro;
+      }
+      return resposta.json();
+    }
+
+    function regua(percentual) {
+      const faixas = [];
+      for (let i = 9; i >= 0; i--) {
+        faixas.push(el("div", { class: `faixa ${i % 2 === 0 ? "par" : "impar"}`, style: `bottom:${i * 10}%` },
+          el("div", { class: "e" }),
+          el("span", { "aria-hidden": "true" }, (i + 1) * 10)));
+      }
+      const nivel = Math.min(100, Math.max(0, percentual));
+      const agua = el("div", { class: "agua", style: `--nivel:${nivel}%; --nivel-anterior:${nivelAnterior}%` });
+      nivelAnterior = nivel;
+      return el("div", { class: "regua-bloco" },
+        el("div", { class: "regua", role: "img", "aria-label": `${numero(percentual)}% das ruas com situação conhecida em 15 minutos` }, faixas, agua),
+        el("p", { class: "regua-legenda" }, el("strong", {}, `${numero(percentual)}%`), "das ruas com situação conhecida em 15 minutos"));
+    }
+
+    function descreverChamada(chamada) {
+      const inicio = `Aberta às ${hora(chamada.iniciadaEm)}`;
+      if (chamada.tipo === "Real" && chamada.aviso) {
+        return `${inicio} pelo aviso ${chamada.aviso.fonte}: ${chamada.aviso.evento}.`;
+      }
+      return `${inicio}. Simulado: não há alerta real.`;
+    }
+
+    function linhaDaRua(rua) {
+      const detalhes = [];
+      if (rua.status === "EmSilencio") detalhes.push("Ainda não respondeu.");
+      if (rua.ultimaRespostaEm) detalhes.push(`Respondeu às ${hora(rua.ultimaRespostaEm)}${rua.canal && rua.canal !== "App" ? ` por ${rua.canal}` : ""}.`);
+      if (rua.pessoas) detalhes.push(`${rua.pessoas} pessoa(s) precisam de ajuda.`);
+      if (rua.observacao) detalhes.push(`"${rua.observacao}"`);
+
+      const sensor = rua.sensor
+        ? el("span", { class: rua.sensor.acimaDoLimite ? "alerta" : null },
+            ` Régua: ${metros(rua.sensor.nivelCm)} m (limite ${metros(rua.sensor.limiteCm)} m)${rua.sensor.acimaDoLimite ? ", acima do limite." : "."}`)
+        : null;
+
+      const acoes = [];
+      if (rua.atendimentoACaminho) acoes.push("Alguém da coordenação está indo até lá. ");
+      if (rua.linkWhatsApp && (rua.status === "EmSilencio" || rua.status === "PrecisaDeAjuda")) {
+        acoes.push(el("a", { href: rua.linkWhatsApp, target: "_blank", rel: "noopener" }, `Chamar ${rua.rua} no WhatsApp`));
+      }
+
+      return el("li", { class: rua.status },
+        el("span", { class: "posicao" }, rua.posicao),
+        el("span", { class: "marcador", "aria-hidden": "true" }),
+        el("span", { class: "rua-nome" }, rua.rua, el("span", { class: "posicao" }, ` ${rua.microarea}`)),
+        el("span", { class: "status" }, ROTULOS[rua.status] ?? rua.status),
+        el("p", { class: "rua-info" }, detalhes.join(" "), sensor),
+        acoes.length ? el("p", { class: "rua-acoes" }, acoes) : null);
+    }
+
+    function desenharPainel(painel) {
+      const r = painel.resumo;
+      conteudo.replaceChildren(
+        el("div", { class: "quadro" },
+          regua(painel.indicador.percentualConhecidoEm15Min),
+          el("section", { "aria-labelledby": "titulo-chamada" },
+            el("div", { class: `chamada ${painel.chamada.tipo === "Treino" ? "treino" : ""}` },
+              el("h2", { id: "titulo-chamada" }, `Chamada ${painel.chamada.tipo === "Treino" ? "de treino" : "real"} em andamento`),
+              el("p", {}, descreverChamada(painel.chamada))),
+            el("ul", { class: "contagem" },
+              el("li", { class: "PrecisaDeAjuda" }, el("b", {}, r.precisamDeAjuda), "pedem ajuda"),
+              el("li", {}, el("b", {}, r.emSilencio), "em silêncio"),
+              el("li", {}, el("b", {}, r.aguaSubindo), "com água subindo"),
+              el("li", {}, el("b", {}, r.tudoBem), "tudo bem"),
+              el("li", {}, el("b", {}, r.pessoasPrecisandoDeAjuda), "pessoas esperando ajuda")),
+            el("ol", { class: "ruas", "aria-label": "Ruas em ordem de prioridade" }, painel.ruas.map(linhaDaRua)))));
+    }
+
+    function desenharSemChamada(nomeDoBairro) {
+      conteudo.replaceChildren(el("div", { class: "vazio" },
+        el("p", {}, el("strong", {}, `Nenhuma chamada aberta agora em ${nomeDoBairro}.`)),
+        el("p", {}, "Quando o coordenador abrir uma chamada (POST /api/bairros/{id}/chamadas), as ruas aparecem aqui em ordem de prioridade.")));
+    }
+
+    function desenharErro() {
+      const botao = el("button", { type: "button" }, "Tentar de novo");
+      botao.addEventListener("click", carregar);
+      conteudo.replaceChildren(el("div", { class: "erro", role: "alert" },
+        el("p", {}, el("strong", {}, "A API não respondeu.")),
+        el("p", {}, "Confira se ela está rodando (dotnet run --project src/Elo.Api) e tente de novo."),
+        botao));
+    }
+
+    async function carregar() {
+      conteudo.setAttribute("aria-busy", "true");
+      try {
+        const bairros = await buscar("/api/bairros");
+        if (!bairros.length) {
+          conteudo.replaceChildren(el("div", { class: "vazio" }, el("p", {}, "Nenhum bairro cadastrado. Cadastre um em POST /api/bairros.")));
+          return;
+        }
+
+        const selecionado = seletor.value;
+        seletor.replaceChildren(...bairros.map((b) => el("option", { value: b.id }, b.nome)));
+        seletor.value = selecionado && bairros.some((b) => String(b.id) === selecionado) ? selecionado : String(bairros[0].id);
+        const bairro = bairros.find((b) => String(b.id) === seletor.value);
+        document.getElementById("simulado").hidden = !bairro.dadosSimulados;
+
+        try {
+          desenharPainel(await buscar(`/api/bairros/${bairro.id}/painel`));
+        } catch (erro) {
+          if (erro.status === 404) desenharSemChamada(bairro.nome);
+          else throw erro;
+        }
+
+        document.getElementById("atualizado").textContent =
+          `Atualizado às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+      } catch {
+        desenharErro();
+      } finally {
+        conteudo.setAttribute("aria-busy", "false");
+      }
+    }
+
+    seletor.addEventListener("change", carregar);
+    carregar();
+    setInterval(carregar, INTERVALO_MS);
+  </script>
+</body>
+</html>
