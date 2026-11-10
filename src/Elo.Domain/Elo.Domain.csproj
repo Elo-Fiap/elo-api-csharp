@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Domínio puro: entidades, value objects e regras. Não depende de banco nem de framework web. -->
+  <PropertyGroup>
+    <RootNamespace>Elo.Domain</RootNamespace>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,136 @@
+# Roteiro de requisições da Elo API.
+# Rode a API (dotnet run --project src/Elo.Api) e clique em "Send Request"
+# no Visual Studio, Rider ou VS Code (extensão REST Client).
+# Nos dados simulados: bairro 1, chamada real aberta = 2, treino antigo = 1.
+
+@Elo = http://localhost:5080
+
+### Saúde da API (usada pela VM Linux para monitorar o serviço)
+GET {{Elo}}/health
+
+### Bairros (com total de ruas e id da chamada aberta)
+GET {{Elo}}/api/bairros
+
+### Painel do coordenador: ruas na ordem de prioridade + indicador de 15 minutos
+GET {{Elo}}/api/bairros/1/painel
+
+### Uma rua responde em um toque (troque o idLocal para criar uma resposta nova)
+POST {{Elo}}/api/chamadas/2/respostas
+Content-Type: application/json
+
+{
+  "idLocal": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+  "ruaId": 6,
+  "situacao": "PrecisoDeAjuda",
+  "pessoas": 4,
+  "observacao": "Família ilhada no térreo"
+}
+
+### Reenviar a MESMA resposta (celular voltou a ter internet): devolve 200, sem duplicar
+POST {{Elo}}/api/chamadas/2/respostas
+Content-Type: application/json
+
+{
+  "idLocal": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+  "ruaId": 6,
+  "situacao": "PrecisoDeAjuda",
+  "pessoas": 4,
+  "observacao": "Família ilhada no térreo"
+}
+
+### Resposta registrada pelo coordenador, que recebeu um SMS da rua
+POST {{Elo}}/api/chamadas/2/respostas
+Content-Type: application/json
+
+{
+  "ruaId": 4,
+  "situacao": "AguaSubindo",
+  "canal": "Sms"
+}
+
+### Regra de negócio: pedir ajuda sem dizer quantas pessoas (422)
+POST {{Elo}}/api/chamadas/2/respostas
+Content-Type: application/json
+
+{
+  "ruaId": 4,
+  "situacao": "PrecisoDeAjuda"
+}
+
+### O coordenador marca "Vou até lá"
+POST {{Elo}}/api/chamadas/2/acoes
+Content-Type: application/json
+
+{
+  "ruaId": 7,
+  "tipo": "VouAteLa"
+}
+
+### Leitura do ESP32 (HC-SR04): nível da água em cm
+POST {{Elo}}/api/sensores/2/leituras
+Content-Type: application/json
+
+{
+  "nivelCm": 52.5
+}
+
+### Últimas leituras do sensor
+GET {{Elo}}/api/sensores/2/leituras?quantidade=10
+
+### Registro da chamada: o que foi avisado e o que foi feito
+GET {{Elo}}/api/chamadas/2/registro
+
+### Respostas da chamada filtradas por situação
+GET {{Elo}}/api/chamadas/2/respostas?situacao=PrecisoDeAjuda
+
+### Chamadas com filtro e paginação
+GET {{Elo}}/api/chamadas?bairroId=1&tipo=Real&pagina=1&tamanhoPagina=5
+
+### Ruas da microárea 1
+GET {{Elo}}/api/bairros/1/ruas?microarea=Microárea 1
+
+### Detalhe da rua com plano e sensor
+GET {{Elo}}/api/ruas/7
+
+### Plano da rua (abre sem internet no app)
+PUT {{Elo}}/api/ruas/4/plano
+Content-Type: application/json
+
+{
+  "rota": "Subir pela Rua da Várzea até a Rua Ipê Amarelo.",
+  "pontoDeEncontro": "Praça da caixa d'água (simulada)",
+  "abrigo": "Escola estadual do bairro (simulada)",
+  "itensParaLevar": ["Documentos em saco plástico", "Remédios", "Lanterna"]
+}
+
+### Registro da rua por mês (tela "Registro")
+GET {{Elo}}/api/ruas/2/registro
+
+### Encerrar a chamada (guarda a foto do indicador)
+POST {{Elo}}/api/chamadas/2/encerramento
+
+### Abrir um treino de 20 minutos
+POST {{Elo}}/api/bairros/1/chamadas
+Content-Type: application/json
+
+{
+  "tipo": "Treino",
+  "duracaoMinutos": 20
+}
+
+### Abrir uma chamada real (precisa do aviso oficial)
+POST {{Elo}}/api/bairros/1/chamadas
+Content-Type: application/json
+
+{
+  "tipo": "Real",
+  "aviso": {
+    "fonte": "INMET",
+    "identificador": "SIMULADO-2026-0002",
+    "evento": "Chuvas Intensas",
+    "severidade": "Perigo"
+  }
+}
+
+### Indicador de impacto do bairro (Real x Treino)
+GET {{Elo}}/api/bairros/1/indicadores
