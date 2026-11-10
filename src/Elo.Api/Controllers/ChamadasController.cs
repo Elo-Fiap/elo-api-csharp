@@ -95,7 +95,7 @@ public sealed class ChamadasController(
     /// <remarks>
     /// Mande um "idLocal" gerado no celular. Se a mesma resposta for reenviada quando a internet voltar,
     /// a API devolve 200 com a resposta já salva, sem duplicar. Resposta nova devolve 201.
-    /// Em "PrecisoDeAjuda" o campo "pessoas" é obrigatório. CPF, telefone e e-mail na observação são mascarados.
+    /// O campo "pessoas" é opcional (de 1 a 500 quando vier). CPF, telefone e e-mail na observação são mascarados.
     /// </remarks>
     [HttpPost("{id:int}/respostas")]
     [ProducesResponseType<RespostaDto>(StatusCodes.Status201Created)]

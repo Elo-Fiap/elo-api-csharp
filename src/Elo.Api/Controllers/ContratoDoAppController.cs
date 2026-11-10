@@ -72,7 +72,7 @@ public sealed class ContratoDoAppController(IContratoDoAppService contrato, IAvi
             : Ok(resultado.Valor);
     }
 
-    /// <summary>Última leitura da régua de nível, em metros (o app mostra "acima do limite" quando nível &gt;= limite).</summary>
+    /// <summary>Última leitura da régua de nível, em metros (o app mostra "acima do limite" quando o nível chega ao limite).</summary>
     /// <param name="reguaId">Opcional. Sem ele, vale a régua configurada em ContratoDoApp:ReguaPadrao.</param>
     /// <param name="cancellationToken">Cancelamento da requisição.</param>
     [HttpGet("/regua")]

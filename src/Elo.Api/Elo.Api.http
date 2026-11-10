@@ -48,13 +48,14 @@ Content-Type: application/json
   "canal": "Sms"
 }
 
-### Regra de negócio: pedir ajuda sem dizer quantas pessoas (422)
+### Regra de negócio: resposta dada fora do horário da chamada (422)
 POST {{Elo}}/api/chamadas/2/respostas
 Content-Type: application/json
 
 {
   "ruaId": 4,
-  "situacao": "PrecisoDeAjuda"
+  "situacao": "TudoBem",
+  "respondidaEm": "2026-01-01T12:00:00Z"
 }
 
 ### O coordenador marca "Vou até lá"
