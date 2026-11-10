@@ -35,4 +35,6 @@ public interface IRespostaService
     Task<AcaoDto> RegistrarAcaoAsync(int chamadaId, RegistrarAcaoRequest request, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AcaoDto>> ListarAcoesAsync(int chamadaId, CancellationToken cancellationToken = default);
+
+    Task<AcaoDto> ObterAcaoAsync(int chamadaId, int acaoId, CancellationToken cancellationToken = default);
 }

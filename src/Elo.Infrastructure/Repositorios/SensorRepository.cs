@@ -54,6 +54,11 @@ public sealed class SensorRepository(EloDbContext contexto) : RepositoryBase<Sen
             .Take(quantidade)
             .ToListAsync(cancellationToken);
 
+    public Task<LeituraSensor?> ObterLeituraAsync(int sensorId, int leituraId, CancellationToken cancellationToken = default) =>
+        Contexto.Leituras
+            .AsNoTracking()
+            .FirstOrDefaultAsync(leitura => leitura.SensorId == sensorId && leitura.Id == leituraId, cancellationToken);
+
     public async Task<IReadOnlyDictionary<int, LeituraRecente>> ObterUltimaLeituraPorRuaAsync(
         int bairroId,
         DateTime ate,

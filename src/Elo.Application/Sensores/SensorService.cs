@@ -22,6 +22,8 @@ public interface ISensorService
     Task<LeituraDto> RegistrarLeituraAsync(int id, RegistrarLeituraRequest request, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<LeituraDto>> ListarLeiturasAsync(int id, int quantidade, CancellationToken cancellationToken = default);
+
+    Task<LeituraDto> ObterLeituraAsync(int id, int leituraId, CancellationToken cancellationToken = default);
 }
 
 public sealed class SensorService(
@@ -122,6 +124,14 @@ public sealed class SensorService(
             cancellationToken);
 
         return [.. leituras.Select(leitura => leitura.ParaDto())];
+    }
+
+    public async Task<LeituraDto> ObterLeituraAsync(int id, int leituraId, CancellationToken cancellationToken = default)
+    {
+        var leitura = await sensores.ObterLeituraAsync(id, leituraId, cancellationToken)
+            ?? throw RecursoNaoEncontradoException.Leitura(leituraId);
+
+        return leitura.ParaDto();
     }
 
     private async Task<Sensor> ObterSensorAsync(int id, CancellationToken cancellationToken) =>

@@ -132,6 +132,11 @@ public sealed class ChamadaRepository(EloDbContext contexto) : RepositoryBase<Ch
             .OrderBy(acao => acao.RegistradaEm)
             .ToListAsync(cancellationToken);
 
+    public Task<AcaoCoordenador?> ObterAcaoAsync(int chamadaId, int acaoId, CancellationToken cancellationToken = default) =>
+        Contexto.Acoes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(acao => acao.ChamadaId == chamadaId && acao.Id == acaoId, cancellationToken);
+
     /// <summary>Exclusão em lote direto no banco (ExecuteDelete), sem carregar as respostas na memória.</summary>
     public Task<int> ApagarRespostasRecebidasAntesDeAsync(DateTime limite, CancellationToken cancellationToken = default) =>
         Contexto.Respostas

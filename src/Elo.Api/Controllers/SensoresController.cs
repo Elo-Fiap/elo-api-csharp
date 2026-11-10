@@ -69,8 +69,15 @@ public sealed class SensoresController(ISensorService sensores) : ControllerBase
     public async Task<ActionResult<LeituraDto>> RegistrarLeitura(int id, RegistrarLeituraRequest request, CancellationToken cancellationToken)
     {
         var leitura = await sensores.RegistrarLeituraAsync(id, request, cancellationToken);
-        return CreatedAtAction(nameof(ListarLeituras), new { id }, leitura);
+        return CreatedAtAction(nameof(ObterLeitura), new { id, leituraId = leitura.Id }, leitura);
     }
+
+    /// <summary>Detalha uma leitura do sensor.</summary>
+    [HttpGet("{id:int}/leituras/{leituraId:int}")]
+    [ProducesResponseType<LeituraDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<LeituraDto>> ObterLeitura(int id, int leituraId, CancellationToken cancellationToken) =>
+        Ok(await sensores.ObterLeituraAsync(id, leituraId, cancellationToken));
 
     /// <summary>Últimas leituras do sensor (da mais nova para a mais antiga).</summary>
     /// <param name="id">Id do sensor.</param>

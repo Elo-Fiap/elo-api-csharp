@@ -120,6 +120,13 @@ public sealed class ChamadasController(
     public async Task<ActionResult<IReadOnlyList<AcaoDto>>> ListarAcoes(int id, CancellationToken cancellationToken) =>
         Ok(await respostas.ListarAcoesAsync(id, cancellationToken));
 
+    /// <summary>Detalha uma ação do coordenador.</summary>
+    [HttpGet("{id:int}/acoes/{acaoId:int}")]
+    [ProducesResponseType<AcaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AcaoDto>> ObterAcao(int id, int acaoId, CancellationToken cancellationToken) =>
+        Ok(await respostas.ObterAcaoAsync(id, acaoId, cancellationToken));
+
     /// <summary>Registra uma ação do coordenador: ContatoWhatsApp, Ligacao ou VouAteLa.</summary>
     /// <remarks>"VouAteLa" faz a rua descer na fila do painel: já tem alguém indo até lá.</remarks>
     [HttpPost("{id:int}/acoes")]
@@ -130,6 +137,6 @@ public sealed class ChamadasController(
     public async Task<ActionResult<AcaoDto>> RegistrarAcao(int id, RegistrarAcaoRequest request, CancellationToken cancellationToken)
     {
         var acao = await respostas.RegistrarAcaoAsync(id, request, cancellationToken);
-        return CreatedAtAction(nameof(ListarAcoes), new { id }, acao);
+        return CreatedAtAction(nameof(ObterAcao), new { id, acaoId = acao.Id }, acao);
     }
 }

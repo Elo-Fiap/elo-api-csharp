@@ -67,6 +67,9 @@ Content-Type: application/json
   "tipo": "VouAteLa"
 }
 
+### Detalhe de uma ação (o Location do 201 aponta para o detalhe da ação criada)
+GET {{Elo}}/api/chamadas/2/acoes/1
+
 ### Leitura da régua pela API completa: nível da água em cm (limite da régua 2: 150 cm)
 POST {{Elo}}/api/sensores/2/leituras
 Content-Type: application/json
@@ -77,6 +80,9 @@ Content-Type: application/json
 
 ### Últimas leituras do sensor
 GET {{Elo}}/api/sensores/2/leituras?quantidade=10
+
+### Detalhe de uma leitura (o Location do 201 aponta para o detalhe da leitura criada)
+GET {{Elo}}/api/sensores/2/leituras/6
 
 ### Registro da chamada: o que foi avisado e o que foi feito
 GET {{Elo}}/api/chamadas/2/registro

@@ -72,6 +72,8 @@ public interface IChamadaRepository : IRepository<Chamada>
 
     Task<IReadOnlyList<AcaoCoordenador>> ListarAcoesAsync(int chamadaId, CancellationToken cancellationToken = default);
 
+    Task<AcaoCoordenador?> ObterAcaoAsync(int chamadaId, int acaoId, CancellationToken cancellationToken = default);
+
     Task<int> ApagarRespostasRecebidasAntesDeAsync(DateTime limite, CancellationToken cancellationToken = default);
 }
 
@@ -92,6 +94,8 @@ public interface ISensorRepository : IRepository<Sensor>
     Task<SensorComLeitura?> ObterLeituraMaisRecenteDoBairroAsync(int bairroId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<LeituraSensor>> ListarLeiturasAsync(int sensorId, int quantidade, CancellationToken cancellationToken = default);
+
+    Task<LeituraSensor?> ObterLeituraAsync(int sensorId, int leituraId, CancellationToken cancellationToken = default);
 
     /// <summary>Última leitura (até <paramref name="ate"/>) de cada rua do bairro que tem sensor.</summary>
     Task<IReadOnlyDictionary<int, LeituraRecente>> ObterUltimaLeituraPorRuaAsync(

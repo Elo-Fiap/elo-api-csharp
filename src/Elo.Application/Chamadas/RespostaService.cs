@@ -107,6 +107,14 @@ public sealed class RespostaService(
         return [.. acoes.Select(acao => acao.ParaDto())];
     }
 
+    public async Task<AcaoDto> ObterAcaoAsync(int chamadaId, int acaoId, CancellationToken cancellationToken = default)
+    {
+        var acao = await chamadas.ObterAcaoAsync(chamadaId, acaoId, cancellationToken)
+            ?? throw RecursoNaoEncontradoException.Acao(acaoId);
+
+        return acao.ParaDto();
+    }
+
     private async Task<Chamada> ObterChamadaAsync(int chamadaId, CancellationToken cancellationToken) =>
         await chamadas.ObterPorIdAsync(chamadaId, cancellationToken)
             ?? throw RecursoNaoEncontradoException.Chamada(chamadaId);

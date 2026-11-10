@@ -12,6 +12,10 @@ public sealed class RecursoNaoEncontradoException(string mensagem) : Exception(m
     public static RecursoNaoEncontradoException Resposta(int id) => new($"Resposta {id} não encontrada.");
 
     public static RecursoNaoEncontradoException Sensor(int id) => new($"Sensor {id} não encontrado.");
+
+    public static RecursoNaoEncontradoException Acao(int id) => new($"Ação {id} não encontrada.");
+
+    public static RecursoNaoEncontradoException Leitura(int id) => new($"Leitura {id} não encontrada.");
 }
 
 /// <summary>A operação conflita com o estado atual (ex.: já existe chamada aberta). A API devolve HTTP 409.</summary>
