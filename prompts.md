@@ -70,6 +70,29 @@ Antes da entrega, revisem juntos o código, principalmente:
 - `src/Elo.Domain/Painel/PriorizadorDeRuas.cs` (o LINQ que ordena as ruas em silêncio);
 - `src/Elo.Infrastructure/Persistencia/Configuracoes/ChamadaConfiguration.cs` (mapeamento TPH no EF Core);
 - `src/Elo.Application/Chamadas/RespostaService.cs` (reenvio offline sem duplicar);
-- `src/Elo.Application/ContratoDoApp/ContratoDoAppService.cs` (como o app e a régua conversam com a API).
+- `src/Elo.Application/ContratoDoApp/ContratoDoAppService.cs` (como o app e a régua conversam com a API);
+- `src/Elo.Infrastructure/Avisos/FonteDeAvisosEmCache.cs` (o padrão Decorator no cache do INMET).
 
 Se usarem IA para mudar algo depois, acrescentem o prompt aqui.
+
+## Revisão do PR
+
+> com base nos criterios do print e na documentação, quero q vc revise o PR q eu criei e verifique se está compativel 100% com o que se pede, quero uma nota de 0 a 100
+
+Anexos: o mesmo print do enunciado e o PDF da proposta.
+
+A IA leu o código, rodou os testes e subiu uma cópia da API para conferir os endpoints. Ela apontou seis pontos a
+melhorar e lembrou que o repositório está privado e que a `main` ainda não tem o código. A resposta foi:
+
+> Sim, corrigir
+
+Com isso, a IA:
+
+- corrigiu a documentação desatualizada: `pessoas` é opcional no Swagger e no roteiro `.http`, e o `&gt;` saiu da descrição do `GET /regua`;
+- deixou o `PlanoDaRua` imutável e comparado por valor, inclusive a lista de itens;
+- trocou os `is`/`as` da linha do tempo e do DTO da chamada por polimorfismo (`DescreverAbertura`, `AvisoQueMotivou` e `DuracaoPrevistaEmMinutos`);
+- transformou o cache do INMET num Decorator de verdade: o `ClienteDoInmet` e a `FonteDeAvisosEmCache` implementam a mesma `IFonteDeAvisos`;
+- criou `GET /api/chamadas/{id}/acoes/{acaoId}` e `GET /api/sensores/{id}/leituras/{leituraId}`, para o `Location` do 201 apontar para o recurso criado;
+- explicou no README por que a segunda migration não gera SQL.
+
+No fim, 154 testes passando e build sem avisos.

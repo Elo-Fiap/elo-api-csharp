@@ -142,7 +142,7 @@ Sem chave configurada, só o ambiente de desenvolvimento aceita a leitura (para 
 
 ## Endpoints
 
-São 39 operações REST, todas assíncronas e documentadas no Swagger/Scalar.
+São 41 operações REST, todas assíncronas e documentadas no Swagger/Scalar.
 
 ### Rotas do contrato do app e do ESP32 (sem `/api`)
 
@@ -183,9 +183,11 @@ Nos dados simulados: bairro `1`, treino antigo = chamada `1`, chamada real abert
 | GET / POST | `/api/chamadas/{id}/respostas` | Lista (filtros `situacao`, `ruaId`) ou registra a resposta de uma rua |
 | GET | `/api/chamadas/{id}/respostas/{respostaId}` | Detalha uma resposta |
 | GET / POST | `/api/chamadas/{id}/acoes` | Lista ou registra ação do coordenador (`ContatoWhatsApp`, `Ligacao`, `VouAteLa`) |
+| GET | `/api/chamadas/{id}/acoes/{acaoId}` | Detalha uma ação (é para cá que aponta o `Location` do 201) |
 | GET / POST | `/api/sensores` | Lista (filtro `ruaId`) ou cadastra uma régua |
 | GET / PUT / DELETE | `/api/sensores/{id}` | Detalha, atualiza ou exclui uma régua |
 | GET / POST | `/api/sensores/{id}/leituras` | Lista as últimas leituras ou registra uma leitura (em cm) |
+| GET | `/api/sensores/{id}/leituras/{leituraId}` | Detalha uma leitura (é para cá que aponta o `Location` do 201) |
 
 Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md).
 
@@ -224,12 +226,13 @@ o status é `preciso_ajuda` e o id da rua é texto. O [`ContratoDoAppService`](s
 traduz isso para o domínio (a resposta entra na `Chamada` aberta do bairro), sem duplicar regra: tudo passa pelos mesmos
 métodos de `Chamada`, `Resposta` e `Sensor`. O painel e o `/situacao` usam o mesmo [`MontadorDeSituacoes`](src/Elo.Application/Painel/MontadorDeSituacoes.cs).
 
-**Avisos do INMET.** A Aplicação só conhece a interface `IFonteDeAvisos`. Na Infraestrutura, o
-[`ClienteDoInmet`](src/Elo.Infrastructure/Avisos/ClienteDoInmet.cs) baixa a resposta, o
-[`LeitorDeAvisosDoInmet`](src/Elo.Infrastructure/Avisos/LeitorDeAvisosDoInmet.cs) aplica as mesmas regras do `inmet.ts` do app,
-a [`FonteDeAvisosEmCache`](src/Elo.Infrastructure/Avisos/FonteDeAvisosEmCache.cs) (padrão Decorator) guarda a última lista boa e o
-[`AtualizadorDeAvisosWorker`](src/Elo.Infrastructure/Avisos/AtualizadorDeAvisosWorker.cs) atualiza a cada 5 minutos.
-O [`AvisoService`](src/Elo.Application/Avisos/AvisoService.cs) filtra pelo município com LINQ.
+**Avisos do INMET (padrão Decorator).** A Aplicação só conhece a interface `IFonteDeAvisos`. Na Infraestrutura, duas
+classes implementam essa interface: o [`ClienteDoInmet`](src/Elo.Infrastructure/Avisos/ClienteDoInmet.cs) vai direto ao INMET
+(o [`LeitorDeAvisosDoInmet`](src/Elo.Infrastructure/Avisos/LeitorDeAvisosDoInmet.cs) aplica as mesmas regras do `inmet.ts` do app)
+e a [`FonteDeAvisosEmCache`](src/Elo.Infrastructure/Avisos/FonteDeAvisosEmCache.cs) embrulha o cliente e acrescenta o cache,
+guardando a última lista boa. Quem pede `IFonteDeAvisos` recebe o cache sem saber disso. O
+[`AtualizadorDeAvisosWorker`](src/Elo.Infrastructure/Avisos/AtualizadorDeAvisosWorker.cs) atualiza o cache a cada 5 minutos
+pela interface `ICacheDeAvisos`, e o [`AvisoService`](src/Elo.Application/Avisos/AvisoService.cs) filtra pelo município com LINQ.
 
 Modelo de domínio:
 
@@ -275,15 +278,15 @@ classDiagram
 | Conceito | Onde |
 |---|---|
 | **Abstração e herança** | [`Entidade`](src/Elo.Domain/Comum/Entidade.cs) é a base de todas as entidades. [`Chamada`](src/Elo.Domain/Chamadas/Chamada.cs) é abstrata, com as subclasses [`ChamadaReal`](src/Elo.Domain/Chamadas/ChamadaReal.cs) e [`ChamadaTreino`](src/Elo.Domain/Chamadas/ChamadaTreino.cs) |
-| **Polimorfismo** | `Tipo`, `Pergunta` e `MontarMensagemParaRua` são abstratos: cada chamada responde do seu jeito (o treino avisa "TREINO" para ninguém confundir com alerta real). O painel e o link do WhatsApp usam isso sem saber o tipo |
+| **Polimorfismo** | `Tipo`, `Pergunta`, `MontarMensagemParaRua` e `DescreverAbertura` são abstratos, e `AvisoQueMotivou` e `DuracaoPrevistaEmMinutos` são virtuais: cada chamada responde do seu jeito (o treino avisa "TREINO" para ninguém confundir com alerta real). O painel, o link do WhatsApp, o registro e o DTO usam isso sem saber o tipo, sem `is` nem `as` |
 | **Encapsulamento** | Setters privados, coleções expostas só para leitura (`IReadOnlyCollection` sobre lista privada), construtor `internal` de [`Resposta`](src/Elo.Domain/Chamadas/Resposta.cs): só a chamada cria respostas, depois de validar janela de tempo e bairro |
-| **Value objects** | [`Lideranca`](src/Elo.Domain/Ruas/Lideranca.cs), [`PlanoDaRua`](src/Elo.Domain/Ruas/PlanoDaRua.cs), [`AvisoOficial`](src/Elo.Domain/Chamadas/AvisoOficial.cs) e [`IndicadorDaChamada`](src/Elo.Domain/Chamadas/IndicadorDaChamada.cs) são `record`s imutáveis, comparados por valor |
-| **Interfaces** | Repositórios ([`IRepository<T>`](src/Elo.Application/Abstracoes/IRepository.cs) genérico e os específicos), `IUnitOfWork` e uma interface por serviço, inclusive `IContratoDoAppService` |
+| **Value objects** | [`Lideranca`](src/Elo.Domain/Ruas/Lideranca.cs), [`PlanoDaRua`](src/Elo.Domain/Ruas/PlanoDaRua.cs), [`AvisoOficial`](src/Elo.Domain/Chamadas/AvisoOficial.cs) e [`IndicadorDaChamada`](src/Elo.Domain/Chamadas/IndicadorDaChamada.cs) são `record`s imutáveis, comparados por valor. No `PlanoDaRua`, a lista de itens é só leitura e entra na comparação (`Equals` e `GetHashCode` escritos à mão, porque o `record` compararia a lista por referência) |
+| **Interfaces** | Repositórios ([`IRepository<T>`](src/Elo.Application/Abstracoes/IRepository.cs) genérico e os específicos), `IUnitOfWork`, uma interface por serviço, inclusive `IContratoDoAppService`, e `IFonteDeAvisos`, implementada pelo cliente do INMET e pelo cache que o embrulha (Decorator) |
 | **Generics** | `IRepository<T> where T : Entidade`, [`RepositoryBase<T>`](src/Elo.Infrastructure/Repositorios/RepositoryBase.cs), `PaginaResultado<T>`, `ResultadoDeRegistro<T>` |
 
 ### Web API (2,5)
 
-- Controllers REST em [`src/Elo.Api/Controllers`](src/Elo.Api/Controllers) com `[ApiController]`, rotas por recurso e sub-recurso, verbos corretos e códigos 200, 201 (com `Location`), 204, 400, 401, 404, 409 e 422.
+- Controllers REST em [`src/Elo.Api/Controllers`](src/Elo.Api/Controllers) com `[ApiController]`, rotas por recurso e sub-recurso, verbos corretos e códigos 200, 201 (com `Location` apontando para o recurso criado), 204, 400, 401, 404, 409 e 422.
 - **Rotas do contrato do app** ([`ContratoDoAppController`](src/Elo.Api/Controllers/ContratoDoAppController.cs)) no formato que o `elo-app` e o ESP32 já usam.
 - DTOs de entrada e saída separados das entidades (a API nunca expõe entidade), com validação por DataAnnotations e mensagens em português.
 - Erros padronizados em ProblemDetails (RFC 9457) pelo [`TratadorGlobalDeExcecoes`](src/Elo.Api/Configuracao/TratadorGlobalDeExcecoes.cs): os controllers não têm `try/catch`.
@@ -297,7 +300,7 @@ classDiagram
 - **Herança TPH**: `ChamadaReal` e `ChamadaTreino` na tabela `Chamadas`, com a coluna `Discriminador`.
 - **Owned types** para os value objects, **coleção primitiva** (lista do plano salva em JSON), enums gravados como texto, conversor de datas para UTC.
 - **Índice único filtrado** que garante no banco uma chamada aberta por bairro, e índice único no id local das respostas.
-- [Migrations](src/Elo.Infrastructure/Persistencia/Migrations) aplicadas sozinhas na inicialização (a segunda registra a adaptação ao contrato do app).
+- [Migrations](src/Elo.Infrastructure/Persistencia/Migrations) aplicadas sozinhas na inicialização. A segunda registra a adaptação ao contrato do app (id local em texto e observação de até 200 caracteres) e não gera SQL: no SQLite essas colunas já eram `TEXT` e o tamanho máximo não é aplicado pelo banco, então só o modelo mudou.
 - LINQ em vários níveis:
   - [`PriorizadorDeRuas`](src/Elo.Domain/Painel/PriorizadorDeRuas.cs): `Where`, `OrderBy`/`ThenBy`/`ThenByDescending` e concatenação: **é o LINQ que ordena as ruas em silêncio**;
   - [`IndicadorDaChamada`](src/Elo.Domain/Chamadas/IndicadorDaChamada.cs): `GroupBy`, `Min`, `Any`, `Count`, `Average`;
@@ -322,11 +325,11 @@ classDiagram
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
 - Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **146 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet:
-  - 51 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento);
+- **154 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet:
+  - 54 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento, value objects);
   - 36 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`), a tradução para o formato do app e o filtro de avisos;
-  - 18 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app) e o cache;
-  - 41 de integração com a API inteira (`WebApplicationFactory`) e um banco SQLite temporário por classe, incluindo as rotas do contrato, a chave do ESP32 e o `/avisos` com um INMET falso.
+  - 19 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app), o cache e a ligação do Decorator na injeção de dependência;
+  - 45 de integração com a API inteira (`WebApplicationFactory`) e um banco SQLite temporário por classe, incluindo as rotas do contrato, a chave do ESP32, o `/avisos` com um INMET falso e o `Location` de cada 201.
 
 ## Regras de negócio
 
@@ -354,7 +357,7 @@ classDiagram
 ## Evidências de funcionamento
 
 - [`docs/evidencias/fluxo-completo.md`](docs/evidencias/fluxo-completo.md): 27 requisições reais feitas contra a API rodando, em quatro partes: a API completa (painel antes e depois, reenvio offline, erros 400/404/409/422), as **rotas do contrato do app e do ESP32** (`/situacao`, `/chamadas`, `/leituras` com 401 sem chave e 204 com chave, `/regua`, `/ruas/{id}/plano`), o fim da chamada com o indicador e os **avisos reais do INMET** (148.353 bytes do INMET viraram 2.333 bytes para o município).
-- [`docs/evidencias/resultado-dos-testes.txt`](docs/evidencias/resultado-dos-testes.txt): os 146 testes aprovados.
+- [`docs/evidencias/resultado-dos-testes.txt`](docs/evidencias/resultado-dos-testes.txt): os 154 testes aprovados.
 
 **Página do resumo do bairro** (a régua mostra o indicador de 15 minutos; ruas em silêncio têm o marcador vazado):
 

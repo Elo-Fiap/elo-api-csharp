@@ -2,6 +2,8 @@
 
 Requisições feitas de verdade contra a API rodando localmente (`dotnet run --project src/Elo.Api`), em 10/11/2026 01:41 UTC, a partir do banco recém-criado com os dados simulados. Os ids e horários vêm dessa execução.
 
+Depois da revisão do PR, o `Location` dos passos 8 e 9 passou a apontar para o recurso criado, e não para a listagem. Os dois passos foram conferidos de novo em 10/11/2026 02:54 UTC, num banco recém-criado e numa instância na porta 5099: os ids são os mesmos (ação 3 e leitura 13), e o detalhe de cada uma responde 200.
+
 A primeira parte usa as rotas da API completa (`/api/...`). A segunda usa as **rotas do contrato do app** (sem `/api`, como no `docs/contrato-api.md` do repositório elo-app), do jeito que o app e o ESP32 chamam. O mesmo roteiro está em [`src/Elo.Api/Elo.Api.http`](../../src/Elo.Api/Elo.Api.http).
 
 ## Parte 1: API completa (`/api`)
@@ -231,7 +233,7 @@ Content-Type: application/json
 }
 ```
 
-Resposta: **HTTP 201** (Location: `http://localhost:5080/api/chamadas/2/acoes`)
+Resposta: **HTTP 201** (Location: `http://localhost:5080/api/chamadas/2/acoes/3`)
 
 ```json
 {
@@ -256,7 +258,7 @@ Content-Type: application/json
 }
 ```
 
-Resposta: **HTTP 201** (Location: `http://localhost:5080/api/sensores/2/leituras`)
+Resposta: **HTTP 201** (Location: `http://localhost:5080/api/sensores/2/leituras/13`)
 
 ```json
 {
