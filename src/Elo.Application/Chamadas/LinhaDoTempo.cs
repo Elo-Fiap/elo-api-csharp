@@ -19,14 +19,13 @@ internal static class LinhaDoTempo
     {
         string? NomeDa(int ruaId) => nomesDasRuas.GetValueOrDefault(ruaId);
 
+        // Polimorfismo: cada tipo de chamada descreve a própria abertura, sem a linha do tempo perguntar o tipo.
         var abertura = new EventoDoRegistroDto(
             chamada.IniciadaEm,
             TipoDeEvento.ChamadaAberta,
             null,
             null,
-            chamada is ChamadaReal real
-                ? $"Chamada real aberta pelo aviso {real.Aviso}."
-                : "Treino da chamada iniciado (simulado).");
+            chamada.DescreverAbertura());
 
         var eventosDeResposta = respostas.Select(resposta => new EventoDoRegistroDto(
             resposta.RespondidaEm,

@@ -54,6 +54,15 @@ public abstract class Chamada : Entidade
     /// <summary>Mensagem que o coordenador manda no WhatsApp de uma rua.</summary>
     public abstract string MontarMensagemParaRua(string nomeDaRua);
 
+    /// <summary>Como a abertura aparece no registro da chamada ("fica o registro").</summary>
+    public abstract string DescreverAbertura();
+
+    /// <summary>O aviso oficial que motivou a chamada. Só a chamada real tem; no treino é nulo.</summary>
+    public virtual AvisoOficial? AvisoQueMotivou => null;
+
+    /// <summary>Quanto tempo a chamada dura. Só o treino tem prazo; na chamada real é nulo.</summary>
+    public virtual int? DuracaoPrevistaEmMinutos => null;
+
     // ---------- Regras comuns a todas as chamadas ----------
 
     public bool EstaAbertaEm(DateTime momento) =>

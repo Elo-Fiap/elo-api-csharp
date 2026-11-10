@@ -31,4 +31,8 @@ public sealed class ChamadaReal : Chamada
     public override string MontarMensagemParaRua(string nomeDaRua) =>
         $"Elo: há um aviso oficial de {Aviso.Evento} ({Aviso.Fonte}). Como está a {nomeDaRua}? " +
         "Responda no app: Tudo bem, Água subindo ou Preciso de ajuda.";
+
+    public override string DescreverAbertura() => $"Chamada real aberta pelo aviso {Aviso}.";
+
+    public override AvisoOficial? AvisoQueMotivou => Aviso;
 }

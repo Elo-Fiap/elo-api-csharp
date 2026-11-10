@@ -46,6 +46,18 @@ public class ChamadaTests
     }
 
     [Fact]
+    public void Polimorfismo_cada_tipo_descreve_a_abertura_e_diz_o_que_tem()
+    {
+        Chamada[] chamadas = [NovaChamadaReal(), NovoTreino(duracaoMinutos: 20)];
+
+        Assert.Equal(
+            ["Chamada real aberta pelo aviso INMET: Acumulado de Chuva (perigo).", "Treino da chamada iniciado (simulado)."],
+            chamadas.Select(chamada => chamada.DescreverAbertura()));
+        Assert.Equal(new AvisoOficial?[] { NovoAviso(), null }, chamadas.Select(chamada => chamada.AvisoQueMotivou));
+        Assert.Equal(new int?[] { null, 20 }, chamadas.Select(chamada => chamada.DuracaoPrevistaEmMinutos));
+    }
+
+    [Fact]
     public void Resposta_de_rua_de_outro_bairro_e_recusada()
     {
         var chamada = NovaChamadaReal(bairroId: 1);

@@ -24,6 +24,8 @@ internal sealed class ChamadaConfiguration : IEntityTypeConfiguration<Chamada>
         builder.Ignore(chamada => chamada.Tipo);
         builder.Ignore(chamada => chamada.Pergunta);
         builder.Ignore(chamada => chamada.FimDaJanela);
+        builder.Ignore(chamada => chamada.AvisoQueMotivou);
+        builder.Ignore(chamada => chamada.DuracaoPrevistaEmMinutos);
 
         builder.HasOne<Bairro>()
             .WithMany()

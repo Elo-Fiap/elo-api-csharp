@@ -39,4 +39,8 @@ public sealed class ChamadaTreino : Chamada
 
     public override string MontarMensagemParaRua(string nomeDaRua) =>
         $"Elo - TREINO (simulado, não é alerta real): como está a {nomeDaRua}? Responda no app para treinar.";
+
+    public override string DescreverAbertura() => "Treino da chamada iniciado (simulado).";
+
+    public override int? DuracaoPrevistaEmMinutos => DuracaoMinutos;
 }

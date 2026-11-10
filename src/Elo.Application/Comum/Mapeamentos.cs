@@ -78,8 +78,9 @@ internal static class Mapeamentos
         chamada.IniciadaEm,
         chamada.EncerradaEm,
         chamada.EncerramentoPrevistoEm,
-        (chamada as ChamadaReal)?.Aviso.ParaDto(),
-        (chamada as ChamadaTreino)?.DuracaoMinutos,
+        // Polimorfismo: cada tipo diz o que tem (o aviso só na chamada real, a duração só no treino).
+        chamada.AvisoQueMotivou?.ParaDto(),
+        chamada.DuracaoPrevistaEmMinutos,
         chamada.Resultado?.ParaDto());
 
     public static AvisoOficialDto ParaDto(this AvisoOficial aviso) => new()
