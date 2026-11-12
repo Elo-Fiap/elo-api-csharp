@@ -26,8 +26,17 @@ public static class InicializadorDoBanco
         var popular = configuracao.GetValue("Banco:PopularComDadosDeExemplo", defaultValue: true);
         if (popular && !await contexto.Bairros.AnyAsync(cancellationToken))
         {
-            await DadosDeExemplo.PopularAsync(contexto, relogio.GetUtcNow().UtcDateTime, cancellationToken);
-            logger.LogInformation("Banco populado com os dados simulados do Jardim Pantanal.");
+            var incluirExtras = configuracao.GetValue("DadosDeExemplo:IncluirBairrosDoPainel", defaultValue: true);
+            var ajustes = await DadosDeExemplo.PopularAsync(contexto, relogio.GetUtcNow().UtcDateTime, incluirExtras, cancellationToken);
+
+            foreach (var ajuste in ajustes)
+            {
+                logger.LogWarning("Semente do painel: {Ajuste}", ajuste);
+            }
+
+            logger.LogInformation(
+                "Banco populado com os dados simulados do Jardim Pantanal{Extras}.",
+                incluirExtras ? " e dos bairros extras do painel" : string.Empty);
         }
 
         logger.LogInformation("Banco pronto: {Banco}.", contexto.Database.GetDbConnection().DataSource);
