@@ -39,6 +39,19 @@ public static class Guarda
         return valor;
     }
 
+    /// <summary>Latitude e longitude opcionais, mas sempre juntas: ou vêm as duas, ou nenhuma.</summary>
+    public static (double? Latitude, double? Longitude) ParDeCoordenadas(double? latitude, double? longitude, string campo)
+    {
+        if (latitude is null != longitude is null)
+        {
+            throw new RegraDeNegocioException($"{campo}: informe latitude e longitude juntas.");
+        }
+
+        return (
+            latitude is double lat ? Intervalo(lat, -90, 90, $"Latitude ({campo})") : null,
+            longitude is double lon ? Intervalo(lon, -180, 180, $"Longitude ({campo})") : null);
+    }
+
     public static int IdValido(int id, string mensagem) =>
         id > 0 ? id : throw new RegraDeNegocioException(mensagem);
 }

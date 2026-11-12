@@ -28,6 +28,11 @@ public class Sensor : Entidade
 
     public bool Ativo { get; private set; }
 
+    /// <summary>Onde o sensor está no mapa. Opcional, sempre junto da longitude.</summary>
+    public double? Latitude { get; private set; }
+
+    public double? Longitude { get; private set; }
+
     public IReadOnlyCollection<LeituraSensor> Leituras => _leituras.AsReadOnly();
 
     private Sensor()
@@ -51,6 +56,14 @@ public class Sensor : Entidade
         Local = Guarda.TextoObrigatorio(local, "Local do sensor", TamanhoMaximoLocal);
         LimiteAlertaCm = Guarda.Intervalo(limiteAlertaCm, 1, NivelMaximoCm, "Limite de alerta (cm)");
         Ativo = ativo;
+    }
+
+    /// <summary>Define (ou limpa, com dois nulos) a posição do sensor no mapa.</summary>
+    public void DefinirLocalizacao(double? latitude, double? longitude)
+    {
+        var (latitudeValida, longitudeValida) = Guarda.ParDeCoordenadas(latitude, longitude, "Sensor");
+        Latitude = latitudeValida;
+        Longitude = longitudeValida;
     }
 
     public LeituraSensor RegistrarLeitura(double nivelCm, DateTime medidaEm, DateTime agora)
