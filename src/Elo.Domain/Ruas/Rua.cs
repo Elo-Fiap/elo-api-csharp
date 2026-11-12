@@ -11,6 +11,8 @@ public class Rua : Entidade
 {
     public const int TamanhoMaximoNome = 120;
     public const int TamanhoMaximoMicroarea = 60;
+    public const int MinimoDePontosDoTracado = 2;
+    public const int MaximoDePontosDoTracado = 2000;
 
     private readonly List<Sensor> _sensores = [];
 
@@ -24,6 +26,17 @@ public class Rua : Entidade
 
     /// <summary>Rua desativada não entra no painel nem no indicador.</summary>
     public bool Ativa { get; private set; }
+
+    /// <summary>Ponto de referência da rua no mapa (ex.: onde o marcador aparece). Opcional, sempre junto da longitude.</summary>
+    public double? Latitude { get; private set; }
+
+    public double? Longitude { get; private set; }
+
+    /// <summary>
+    /// Linha da rua no mapa, na ordem em que foi desenhada. Nulo quando a rua não tem traçado.
+    /// Só leitura: para trocar, use <see cref="DefinirGeografia"/>.
+    /// </summary>
+    public IReadOnlyList<Coordenada>? Tracado { get; private set; }
 
     public Lideranca? Lideranca { get; private set; }
     public PlanoDaRua? Plano { get; private set; }
@@ -47,6 +60,26 @@ public class Rua : Entidade
         NivelRisco = Guarda.EnumValido(nivelRisco, "Nível de risco");
         Lideranca = lideranca;
         Ativa = ativa;
+    }
+
+    /// <summary>
+    /// Define onde a rua fica no mapa. Tudo é opcional; o traçado, quando existe, precisa de pelo menos 2 pontos.
+    /// Fica separado de <see cref="Atualizar"/> para quem edita o cadastro da rua não apagar o traçado sem querer.
+    /// </summary>
+    public void DefinirGeografia(double? latitude, double? longitude, IEnumerable<Coordenada>? tracado)
+    {
+        var (latitudeValida, longitudeValida) = Guarda.ParDeCoordenadas(latitude, longitude, "Rua");
+
+        var pontos = tracado?.ToList();
+        if (pontos is { Count: > 0 and < MinimoDePontosDoTracado } || pontos?.Count > MaximoDePontosDoTracado)
+        {
+            throw new RegraDeNegocioException(
+                $"O traçado da rua deve ter de {MinimoDePontosDoTracado} a {MaximoDePontosDoTracado} pontos.");
+        }
+
+        Latitude = latitudeValida;
+        Longitude = longitudeValida;
+        Tracado = pontos is { Count: > 0 } ? pontos.AsReadOnly() : null;
     }
 
     public void DefinirPlano(PlanoDaRua plano)

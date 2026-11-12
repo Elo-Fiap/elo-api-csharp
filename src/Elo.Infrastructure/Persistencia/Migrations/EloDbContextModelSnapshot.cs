@@ -28,17 +28,37 @@ namespace Elo.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CodigoIbge")
+                        .HasMaxLength(7)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("DadosSimulados")
                         .HasColumnType("INTEGER");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("PercentualSemApp")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime?>("SemAppMedidoEm")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Subprefeitura")
                         .IsRequired()
                         .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Uf")
+                        .HasMaxLength(2)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -182,6 +202,12 @@ namespace Elo.Infrastructure.Persistencia.Migrations
                     b.Property<int>("BairroId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("Microarea")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -196,6 +222,10 @@ namespace Elo.Infrastructure.Persistencia.Migrations
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("Tracado")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Tracado");
 
                     b.HasKey("Id");
 
@@ -250,6 +280,9 @@ namespace Elo.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("REAL");
+
                     b.Property<double>("LimiteAlertaCm")
                         .HasColumnType("REAL");
 
@@ -257,6 +290,9 @@ namespace Elo.Infrastructure.Persistencia.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("REAL");
 
                     b.Property<int>("RuaId")
                         .HasColumnType("INTEGER");

@@ -2,6 +2,7 @@ using Elo.Domain.Bairros;
 using Elo.Domain.Chamadas;
 using Elo.Domain.Ruas;
 using Elo.Domain.Sensores;
+using Elo.Infrastructure.Persistencia.Semente;
 
 namespace Elo.Infrastructure.Persistencia;
 
@@ -9,13 +10,29 @@ namespace Elo.Infrastructure.Persistencia;
 /// Dados de exemplo da GS. Tudo é simulado: ruas, apelidos, telefones (DDD 00, que não existe)
 /// e respostas, como pede a regra "nada de dados pessoais reais".
 /// Os dados são criados pelos construtores e métodos do domínio, então passam pelas mesmas regras da API.
+/// <para>
+/// As ruas do piloto usam traçados reais do OpenStreetMap (© colaboradores do OpenStreetMap, licença ODbL,
+/// https://www.openstreetmap.org/copyright) com os nomes fictícios da API; os arquivos estão em <c>Semente/</c>.
+/// </para>
 /// </summary>
 internal static class DadosDeExemplo
 {
-    public static async Task PopularAsync(EloDbContext contexto, DateTime agora, CancellationToken cancellationToken)
+    /// <summary>
+    /// Cadastra o piloto (bairro 1) e, se <paramref name="incluirBairrosDoPainel"/>, os bairros extras do painel.
+    /// Devolve os ajustes que a semente dos extras precisou fazer para respeitar as regras do domínio.
+    /// </summary>
+    public static async Task<IReadOnlyList<string>> PopularAsync(
+        EloDbContext contexto,
+        DateTime agora,
+        bool incluirBairrosDoPainel,
+        CancellationToken cancellationToken)
     {
-        // 1. Bairro (salvo antes, para as ruas receberem o Id dele).
-        var bairro = new Bairro("Jardim Pantanal (simulado)", "São Paulo", "São Miguel Paulista", dadosSimulados: true);
+        // 1. Bairro (salvo antes, para as ruas receberem o Id dele). O piloto também tem UF, código IBGE,
+        //    centro no mapa e o resultado do simulado feito sem o app (31%, medido há 45 dias).
+        var bairro = new Bairro(
+            "Jardim Pantanal (simulado)", "São Paulo", "São Miguel Paulista", dadosSimulados: true,
+            uf: "SP", codigoIbge: "3550308", latitude: -23.47939, longitude: -46.40912,
+            percentualSemApp: 31, semAppMedidoEm: agora.AddDays(-45));
         contexto.Bairros.Add(bairro);
         await contexto.SaveChangesAsync(cancellationToken);
 
@@ -51,6 +68,19 @@ internal static class DadosDeExemplo
             ["Documentos em saco plástico", "Remédios", "Roupa seca", "Ração dos animais"],
             agora.AddDays(-15)));
 
+        // Traçado e ponto de cada rua, na mesma ordem em que elas foram criadas acima.
+        var geografia = GeografiaDoPiloto.Carregar();
+        if (geografia.Ruas.Count != ruas.Length)
+        {
+            throw new InvalidOperationException(
+                $"A semente tem {ruas.Length} ruas, mas o arquivo de traçados tem {geografia.Ruas.Count}.");
+        }
+
+        for (var i = 0; i < ruas.Length; i++)
+        {
+            ruas[i].DefinirGeografia(geografia.Ruas[i].Ponto.Latitude, geografia.Ruas[i].Ponto.Longitude, geografia.Ruas[i].Tracado);
+        }
+
         contexto.Ruas.AddRange(ruas);
         await contexto.SaveChangesAsync(cancellationToken);
 
@@ -58,6 +88,7 @@ internal static class DadosDeExemplo
         //    "regua-exemplo" é o id fixo no firmware da régua da equipe (repositório elo-regua-esp32), limite de 1,20 m.
         var reguaPalafitas = new Sensor(palafitas.Id, "regua-exemplo", "Córrego do bairro, na ponte da Rua das Palafitas (simulado)", 120);
         var reguaBarqueiros = new Sensor(barqueiros.Id, "regua-barqueiros", "Bueiro da esquina com a Rua da Várzea (simulado)", 150);
+        reguaPalafitas.DefinirLocalizacao(geografia.PontoDaRegua.Latitude, geografia.PontoDaRegua.Longitude);
         contexto.Sensores.AddRange(reguaPalafitas, reguaBarqueiros);
         await contexto.SaveChangesAsync(cancellationToken);
 
@@ -97,6 +128,11 @@ internal static class DadosDeExemplo
 
         contexto.Chamadas.Add(real);
         await contexto.SaveChangesAsync(cancellationToken);                      // chamada real aberta = chamada 2
+
+        // 6. Bairros extras do painel de administração (ids 2 a 12), só se a configuração pedir.
+        return incluirBairrosDoPainel
+            ? await SementeDoPainel.IncluirAsync(contexto, agora, cancellationToken)
+            : [];
     }
 
     private static Rua NovaRua(Bairro bairro, string nome, string microarea, NivelRisco risco, string apelido, int numero) =>

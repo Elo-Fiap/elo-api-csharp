@@ -28,7 +28,13 @@ public sealed class BairroRepository(EloDbContext contexto) : RepositoryBase<Bai
                         && chamada.EncerradaEm == null
                         && (chamada.EncerramentoPrevistoEm == null || chamada.EncerramentoPrevistoEm > agora))
                     .Select(chamada => (int?)chamada.Id)
-                    .FirstOrDefault()))
+                    .FirstOrDefault(),
+                bairro.Uf,
+                bairro.CodigoIbge,
+                bairro.Latitude,
+                bairro.Longitude,
+                bairro.PercentualSemApp,
+                bairro.SemAppMedidoEm))
             .ToListAsync(cancellationToken);
 
     public Task<Bairro?> ObterComRuasAsync(int id, CancellationToken cancellationToken = default) =>

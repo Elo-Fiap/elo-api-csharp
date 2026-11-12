@@ -1,5 +1,6 @@
 using Elo.Domain.Bairros;
 using Elo.Domain.Ruas;
+using Elo.Infrastructure.Persistencia.Conversores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,6 +16,8 @@ internal sealed class BairroConfiguration : IEntityTypeConfiguration<Bairro>
         builder.Property(bairro => bairro.Nome).HasMaxLength(Bairro.TamanhoMaximoNome).IsRequired();
         builder.Property(bairro => bairro.Cidade).HasMaxLength(Bairro.TamanhoMaximoCidade).IsRequired();
         builder.Property(bairro => bairro.Subprefeitura).HasMaxLength(Bairro.TamanhoMaximoSubprefeitura).IsRequired();
+        builder.Property(bairro => bairro.Uf).HasMaxLength(Bairro.TamanhoDaUf);
+        builder.Property(bairro => bairro.CodigoIbge).HasMaxLength(Bairro.TamanhoDoCodigoIbge);
         builder.HasIndex(bairro => new { bairro.Nome, bairro.Cidade }).IsUnique();
 
         // Bairro 1 -> N Ruas. Excluir o bairro exclui as ruas (o serviço só permite se não houver chamadas).
@@ -39,6 +42,11 @@ internal sealed class RuaConfiguration : IEntityTypeConfiguration<Rua>
         builder.Property(rua => rua.Microarea).HasMaxLength(Rua.TamanhoMaximoMicroarea).IsRequired();
         builder.Property(rua => rua.NivelRisco).HasConversion<string>().HasMaxLength(10);
         builder.HasIndex(rua => new { rua.BairroId, rua.Nome }).IsUnique();
+
+        // Traçado: lista de pares [longitude, latitude] salva como JSON em uma coluna, como a lista do plano.
+        builder.Property(rua => rua.Tracado)
+            .HasColumnName("Tracado")
+            .HasConversion(new TracadoConverter(), new TracadoComparer());
 
         // Value objects (owned types): ficam em colunas da própria tabela Ruas.
         builder.OwnsOne(rua => rua.Lideranca, lideranca =>
