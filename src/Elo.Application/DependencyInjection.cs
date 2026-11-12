@@ -3,6 +3,7 @@ using Elo.Application.Bairros;
 using Elo.Application.Chamadas;
 using Elo.Application.ContratoDoApp;
 using Elo.Application.Painel;
+using Elo.Application.PainelAdmin;
 using Elo.Application.Retencao;
 using Elo.Application.Ruas;
 using Elo.Application.Sensores;
@@ -27,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<MontadorDeSituacoes>();
         services.AddScoped<IContratoDoAppService, ContratoDoAppService>();
         services.AddScoped<IAvisoService, AvisoService>();
+        services.AddScoped<IPainelAdminService, PainelAdminService>();
 
         // O relógio também é injetado: nos testes trocamos por um relógio falso e controlamos o tempo.
         services.TryAddSingleton(TimeProvider.System);
