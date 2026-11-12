@@ -32,6 +32,7 @@
 - [Como executar](#como-executar)
 - [Ligar o app e a régua (ESP32)](#ligar-o-app-e-a-régua-esp32)
 - [Endpoints](#endpoints)
+- [Painel de administração](#painel-de-administração)
 - [Arquitetura](#arquitetura)
 - [Onde cada critério da avaliação aparece](#onde-cada-critério-da-avaliação-aparece)
 - [Regras de negócio](#regras-de-negócio)
@@ -142,7 +143,7 @@ Sem chave configurada, só o ambiente de desenvolvimento aceita a leitura (para 
 
 ## Endpoints
 
-São 41 operações REST, todas assíncronas e documentadas no Swagger/Scalar.
+São 42 operações REST, todas assíncronas e documentadas no Swagger/Scalar.
 
 ### Rotas do contrato do app e do ESP32 (sem `/api`)
 
@@ -189,7 +190,36 @@ Nos dados simulados: bairro `1`, treino antigo = chamada `1`, chamada real abert
 | GET / POST | `/api/sensores/{id}/leituras` | Lista as últimas leituras ou registra uma leitura (em cm) |
 | GET | `/api/sensores/{id}/leituras/{leituraId}` | Detalha uma leitura (é para cá que aponta o `Location` do 201) |
 
-Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md).
+Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md). O painel de administração usa uma rota própria, `GET /api/admin/instantaneo` (veja [Painel de administração](#painel-de-administração)).
+
+## Painel de administração
+
+O painel web de administração (`elo-admin`) lê tudo de **uma rota só**:
+
+```bash
+curl 'http://localhost:5080/api/admin/instantaneo?dias=30'
+```
+
+Devolve todos os bairros com todas as ruas (com UF, código IBGE, coordenadas, traçado no mapa e o resultado do simulado sem o app),
+as réguas com as leituras das últimas 72 horas (em metros), as chamadas abertas ou abertas nos últimos `dias` dias (de 1 a 30; fora disso, 400)
+com respostas e ações, e os avisos ativos do INMET para o município de cada bairro (se o INMET cair, `avisos` vem vazio, nunca 503).
+O formato completo está em [`docs/contrato-painel.md`](docs/contrato-painel.md) e um exemplo real em [`docs/evidencias/instantaneo.json`](docs/evidencias/instantaneo.json).
+
+**Bairros extras.** Além do piloto, a semente cria mais 11 bairros simulados (ids 2 a 12, de outras cidades) com ruas, réguas, chamadas, respostas e ações,
+a partir de [`Semente/semente-painel.json`](src/Elo.Infrastructure/Persistencia/Semente/semente-painel.json). Quem controla é a configuração
+`DadosDeExemplo:IncluirBairrosDoPainel` no `appsettings.json` (padrão `true`; use `false` para ter só o piloto, como nos testes de integração atuais).
+Os tempos do arquivo são "minutos atrás" e viram datas a partir do momento em que o banco é criado.
+
+**Recriar o banco.** A semente só roda com o banco vazio. Para recomeçar (ou para os dados voltarem a ser "de agora"), pare a API,
+apague `src/Elo.Api/elo.db` e rode de novo:
+
+```bash
+rm src/Elo.Api/elo.db
+dotnet run --project src/Elo.Api
+```
+
+**Créditos.** Os traçados das 8 ruas do piloto são reais, do **OpenStreetMap** (© colaboradores do OpenStreetMap, licença
+[ODbL](https://www.openstreetmap.org/copyright)), usados com os nomes fictícios da API. Os dados de bairros, ruas, réguas e chamadas são todos simulados.
 
 ## Arquitetura
 
@@ -325,7 +355,7 @@ classDiagram
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
 - Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **154 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet:
+- **226 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet (os 154 abaixo mais 72 do painel de administração: validações de UF, IBGE, coordenadas e traçado, o serviço do instantâneo e a rota com os dados do piloto e com os 12 bairros):
   - 54 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento, value objects);
   - 36 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`), a tradução para o formato do app e o filtro de avisos;
   - 19 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app), o cache e a ligação do Decorator na injeção de dependência;
