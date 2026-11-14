@@ -136,10 +136,10 @@ A resposta da liderança só entra se houver **chamada aberta** no bairro (o coo
 (para o botão "Ver no mapa"). O `GET /regua` traz `ruaId`, `latitude`, `longitude` e `atencaoMetros` (o nível de atenção, abaixo do limite;
 na `regua-exemplo`, 1,00 m, como o firmware). São campos opcionais: o app que só lê os antigos continua funcionando.
 
-Para os avisos, o app pode trocar a chamada direta ao INMET por `GET /avisos?codigoIbge=<código da área>`.
+Para os avisos, o app usa `GET /avisos?codigoIbge=<código da área>` quando a API do bairro está configurada
+(branch `feat/dados-reais` do `elo-app`); sem ela, continua baixando o INMET direto.
 A resposta já vem com os campos do tipo `Aviso` do app (`id`, `titulo`, `severidade`, `gravidade`, `inicio`, `fim`,
-`quando`, `riscos`, `instrucoes`), filtrada e ordenada. Como a função `normalizarAvisos` do app espera o formato bruto do
-INMET, o `inmet.ts` precisa de um ramo que use essa lista direto quando a API do bairro estiver configurada.
+`quando`, `riscos`, `instrucoes`), filtrada e ordenada, e o app usa a lista sem passar pela `normalizarAvisos`.
 
 **Régua (`elo-regua-esp32`).** O `sketch.ino` manda `POST /leituras` com `{"reguaId":"regua-exemplo","nivelMetros":1.42}`
 e o header `X-Chave-Dispositivo`. A `regua-exemplo` já vem cadastrada na Rua das Palafitas, com limite de 1,20 m e atenção de 1,00 m, como no firmware.
@@ -411,7 +411,7 @@ classDiagram
 - **SQLite** para quem avaliar rodar sem instalar banco. Trocar para Oracle ou SQL Server muda só o provedor no `AddInfrastructure` e as migrations.
 - **Sem login de usuário** nesta versão, como no contrato do app ("o app não faz login"). O ESP32 usa uma chave; hoje é **uma chave para todos os dispositivos**. O próximo passo seria uma chave por régua e login do coordenador.
 - **Datas em UTC** na API; o app converte para o horário local.
-- O `GET /avisos` já filtra o INMET no servidor, como o contrato recomenda, mas o app ainda busca o INMET direto até ganhar o ramo que lê a lista pronta (veja [Ligar o app e a régua](#ligar-o-app-e-a-régua-esp32)).
+- O `GET /avisos` já filtra o INMET no servidor, como o contrato recomenda. O app passa a usar essa lista com a API configurada na branch `feat/dados-reais` do `elo-app`, ainda sem merge (veja [Ligar o app e a régua](#ligar-o-app-e-a-régua-esp32)).
 - Sem internet no servidor, o `/avisos` devolve 503; o resto da API funciona normalmente. O INMET não publica um contrato dessa API, então o leitor aceita as variações já vistas (listas em texto do Python, `encerrado` como texto).
 - O `bateriaPercentual` do ESP32 é aceito, mas não é guardado (a régua simulada não tem bateria).
 - Sem chamada aberta, `POST /chamadas` devolve 422 e o app deixa a resposta pendente para tentar de novo. Abrir a chamada é papel do coordenador (`/api/bairros/{id}/chamadas`).

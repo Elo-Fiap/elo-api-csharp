@@ -119,9 +119,9 @@ e também `gravidade` (1, 2 ou 3) e `quando` (`hoje` ou `futuro`): são exatamen
 | INMET fora do ar | Vale a última lista boa; sem nenhuma, **503** |
 | Tamanho | Na evidência, 148.353 bytes do INMET viraram 2.333 bytes para o município |
 
-**Para o app usar:** hoje o `buscarAvisos` do `inmet.ts` chama o INMET direto e passa a resposta bruta para a
-`normalizarAvisos`, que espera o formato `{ hoje, futuro }` do INMET. Para usar a API, falta um ramo assim:
-quando `usaApiDoBairro()`, chamar `GET {API}/avisos?codigoIbge=...` e usar a lista como `Aviso[]`, sem passar pela `normalizarAvisos`.
+**No app:** com `usaApiDoBairro()`, o `buscarAvisos` do `inmet.ts` chama `GET {API}/avisos?codigoIbge=...` e usa a lista
+como `Aviso[]`, sem passar pela `normalizarAvisos` (branch `feat/dados-reais` do `elo-app`). Item fora do formato é descartado;
+resposta que não é lista conta como erro, e o app mostra o último aviso guardado. Sem a API, o app segue baixando o INMET direto.
 
 ## Exemplos
 
