@@ -14,7 +14,7 @@ Cada item tem teste de integração em [`tests/Elo.Tests/Integracao/ContratoDoAp
 
 | Item do contrato | Nesta API | Confere? |
 |---|---|---|
-| `GET /situacao` com `bairro`, `chamadaIniciadaEm` e `ruas[]` (`id`, `nome`, `status`, `respondidaEm`) | Igual | Sim |
+| `GET /situacao` com `bairro`, `chamadaIniciadaEm` e `ruas[]` (`id`, `nome`, `status`, `respondidaEm`) | Igual (mais os campos opcionais da seção "Campos novos") | Sim |
 | `status`: `tudo_bem`, `agua_subindo`, `preciso_ajuda`; silêncio = `null` | Igual | Sim |
 | `chamadaIniciadaEm` nulo sem chamada em andamento | Igual (e todas as ruas em silêncio) | Sim |
 | Resposta de chamada anterior não vale: a rua volta a `null` | Só contam as respostas da chamada aberta | Sim |
@@ -25,7 +25,7 @@ Cada item tem teste de integração em [`tests/Elo.Tests/Integracao/ContratoDoAp
 | `pessoas` e `observacao` podem ser nulos | Aceitos nulos; `pessoas`, quando vem, de 1 a 500 | Sim |
 | `observacao` com mais de 200 caracteres é recusada | 400 | Sim |
 | A observação não vai para log | Não vai (pode ter dado pessoal digitado sem querer) | Sim |
-| `GET /regua` com `reguaId`, `local`, `nivelMetros`, `limiteMetros`, `medidaEm` | Igual, em metros | Sim |
+| `GET /regua` com `reguaId`, `local`, `nivelMetros`, `limiteMetros`, `medidaEm` | Igual, em metros (mais `ruaId`, `latitude`, `longitude` e `atencaoMetros`, opcionais) | Sim |
 | O limite fica no servidor, por régua | `LimiteAlertaCm` de cada régua (a `regua-exemplo` vem com 1,20 m) | Sim |
 | `GET /ruas/{id}/plano` com `ruaId`, `ruaNome`, `pontoEncontro`, `rotaSaida`, `abrigo`, `itensParaLevar`, `contatos` | Igual; contatos: Defesa Civil 199 e Bombeiros 193 | Sim |
 | `404` quando a rua não tem plano | 404 (também para id que não existe) | Sim |
@@ -40,6 +40,57 @@ Cada item tem teste de integração em [`tests/Elo.Tests/Integracao/ContratoDoAp
 | `encerrado` indica aviso já encerrado (descartar) | Descartado, venha como booleano ou texto (`"True"`) | Sim |
 | `inicio` e `fim` em horário de Brasília, sem fuso | Viram ISO com `-03:00` | Sim |
 
+## Campos novos (aditivos e opcionais)
+
+O painel de administração e a ligação com o Elo Alertas pediram mais dados. Todos são **campos novos nas respostas que já existem**:
+quem lê só os campos antigos continua funcionando. Ausente vem como `null`, e latitude e longitude vêm sempre em par (as duas ou nenhuma).
+Não há traçado do mapa nestas rotas, para a resposta ficar leve no celular (o traçado está em `GET /api/admin/instantaneo`).
+
+`GET /situacao`, no objeto:
+
+| Campo | Tipo | Observação |
+|---|---|---|
+| `bairroId` | texto | O id do bairro atendido, como texto (`"1"`). |
+| `cidade` | texto | Ex.: `São Paulo`. |
+| `uf` | texto ou `null` | Sigla em maiúsculas. |
+| `codigoIbge` | texto ou `null` | Município, 7 dígitos. É o que o app manda em `GET /avisos?codigoIbge=`. |
+| `latitude`, `longitude` | número ou `null` | Centro do bairro no mapa. |
+| `percentualSemApp` | número ou `null` | De 0 a 100: % de ruas com situação conhecida em 15 minutos num simulado feito **sem o app**. |
+| `semAppMedidoEm` | texto ISO UTC ou `null` | Quando esse simulado foi medido. Só vem junto do percentual. |
+
+`GET /situacao`, em cada item de `ruas[]`: `latitude` e `longitude` (número ou `null`), a posição de referência da rua.
+Com elas o app mostra "Ver no mapa" só nas ruas que têm coordenada.
+
+`GET /regua`:
+
+| Campo | Tipo | Observação |
+|---|---|---|
+| `ruaId` | texto | A rua onde a régua está, o mesmo id do `GET /situacao`. |
+| `latitude`, `longitude` | número ou `null` | Posição da régua no mapa. |
+| `atencaoMetros` | número ou `null` | Nível de atenção, em metros, sempre menor que `limiteMetros`. |
+
+O nível de atenção é guardado em centímetros no cadastro da régua (`atencaoCm` em `/api/sensores`, maior que 0 e menor que `limiteAlertaCm`).
+
+Exemplo com os dados do piloto:
+
+```json
+{
+  "bairro": "Jardim Pantanal (simulado)", "chamadaIniciadaEm": "2026-11-12T04:35:00.000Z",
+  "ruas": [{ "id": "7", "nome": "Rua das Palafitas", "status": null, "respondidaEm": null, "latitude": -23.4766, "longitude": -46.4114 }],
+  "bairroId": "1", "cidade": "São Paulo", "uf": "SP", "codigoIbge": "3550308",
+  "latitude": -23.47939, "longitude": -46.40912,
+  "percentualSemApp": 31, "semAppMedidoEm": "2026-09-28T05:00:00.000Z"
+}
+```
+
+```json
+{
+  "reguaId": "regua-exemplo", "local": "Córrego do bairro, na ponte da Rua das Palafitas (simulado)",
+  "nivelMetros": 1.42, "limiteMetros": 1.2, "medidaEm": "2026-11-12T04:50:00.000Z",
+  "ruaId": "7", "latitude": -23.476551, "longitude": -46.41135, "atencaoMetros": 1
+}
+```
+
 ## O que o contrato não dizia e foi decidido aqui
 
 | Ponto | Decisão |
@@ -49,6 +100,7 @@ Cada item tem teste de integração em [`tests/Elo.Tests/Integracao/ContratoDoAp
 | Quem abre a chamada | O coordenador, pela API completa: `POST /api/bairros/{id}/chamadas` (real, com o aviso oficial, ou treino) |
 | Qual bairro as rotas do app atendem | O de `ContratoDoApp:BairroId` no `appsettings.json` ("o acesso do piloto vai por URL própria do bairro"). O `GET /situacao` aceita `?bairroId=` para testes |
 | Formato do id da rua | O número da rua como texto (`"7"`). O app já converte com `String(r.id)` |
+| Nível de atenção da régua | Opcional, em centímetros no cadastro e em metros no `GET /regua`. Maior que 0 e menor que o limite; fora disso, erro de validação. Vazio no `PUT /api/sensores/{id}` remove o nível de atenção |
 | Qual régua o `GET /regua` mostra | A de `ContratoDoApp:ReguaPadrao` (`regua-exemplo`, o id fixo no firmware), ou outra com `?reguaId=` |
 | Maiúsculas no `reguaId` | Não diferencia: `REGUA-EXEMPLO` e `regua-exemplo` são a mesma régua |
 | Chave não configurada no servidor | Em desenvolvimento, `POST /leituras` aceita sem chave (para testar no Swagger). Em qualquer outro ambiente, 401 |

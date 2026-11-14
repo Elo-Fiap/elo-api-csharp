@@ -131,13 +131,18 @@ A resposta da liderança só entra se houver **chamada aberta** no bairro (o coo
 `POST /api/bairros/1/chamadas`). Nos dados simulados já existe uma aberta. O bairro atendido pelas rotas do app é o
 `ContratoDoApp:BairroId` do `appsettings.json` (o contrato diz que cada bairro do piloto tem a sua URL).
 
+**Dados que o app recebe além do básico.** O `GET /situacao` traz `bairroId`, `cidade`, `uf`, `codigoIbge`, `latitude`, `longitude`,
+`percentualSemApp` e `semAppMedidoEm` (o simulado sem o app, base do indicador de impacto) e, em cada rua, `latitude` e `longitude`
+(para o botão "Ver no mapa"). O `GET /regua` traz `ruaId`, `latitude`, `longitude` e `atencaoMetros` (o nível de atenção, abaixo do limite;
+na `regua-exemplo`, 1,00 m, como o firmware). São campos opcionais: o app que só lê os antigos continua funcionando.
+
 Para os avisos, o app pode trocar a chamada direta ao INMET por `GET /avisos?codigoIbge=<código da área>`.
 A resposta já vem com os campos do tipo `Aviso` do app (`id`, `titulo`, `severidade`, `gravidade`, `inicio`, `fim`,
 `quando`, `riscos`, `instrucoes`), filtrada e ordenada. Como a função `normalizarAvisos` do app espera o formato bruto do
 INMET, o `inmet.ts` precisa de um ramo que use essa lista direto quando a API do bairro estiver configurada.
 
 **Régua (`elo-regua-esp32`).** O `sketch.ino` manda `POST /leituras` com `{"reguaId":"regua-exemplo","nivelMetros":1.42}`
-e o header `X-Chave-Dispositivo`. A `regua-exemplo` já vem cadastrada, com limite de 1,20 m como no firmware.
+e o header `X-Chave-Dispositivo`. A `regua-exemplo` já vem cadastrada na Rua das Palafitas, com limite de 1,20 m e atenção de 1,00 m, como no firmware.
 A chave **não fica no repositório**: configure por variável de ambiente (`Dispositivos__Chave`) ou `dotnet user-secrets`.
 Sem chave configurada, só o ambiente de desenvolvimento aceita a leitura (para testar no Swagger).
 
@@ -152,9 +157,9 @@ status `tudo_bem`, `agua_subindo`, `preciso_ajuda` (nulo = silêncio), ids em te
 
 | Método | Rota | O que faz |
 |---|---|---|
-| GET | `/situacao` | Situação do bairro na chamada atual, na ordem do painel (tela "Bairro" do app) |
+| GET | `/situacao` | Situação do bairro na chamada atual, na ordem do painel (tela "Bairro" do app), com cidade, UF, código IBGE, coordenadas e o `percentualSemApp` |
 | POST | `/chamadas` | Recebe a resposta da rua enviada pelo app (201; 200 se o mesmo `id` já tinha chegado) |
-| GET | `/regua` | Última leitura da régua, em metros (`?reguaId=` opcional) |
+| GET | `/regua` | Última leitura da régua, em metros (`?reguaId=` opcional), com `ruaId`, coordenadas e `atencaoMetros` |
 | GET | `/ruas/{id}/plano` | Plano da rua com contatos de emergência (404 = rua sem plano) |
 | GET | `/avisos?codigoIbge=` | Avisos do INMET que valem para o município, já filtrados e limpos (503 se o INMET estiver fora e não houver nada guardado) |
 | POST | `/leituras` | Leitura do ESP32, com o header `X-Chave-Dispositivo` (204) |
@@ -201,7 +206,7 @@ curl 'http://localhost:5080/api/admin/instantaneo?dias=30'
 ```
 
 Devolve todos os bairros com todas as ruas (com UF, código IBGE, coordenadas, traçado no mapa e o resultado do simulado sem o app),
-as réguas com as leituras das últimas 72 horas (em metros), as chamadas abertas ou abertas nos últimos `dias` dias (de 1 a 30; fora disso, 400)
+as réguas com o limite e o nível de atenção (`limiteMetros`, `atencaoMetros`) e as leituras das últimas 72 horas (em metros), as chamadas abertas ou abertas nos últimos `dias` dias (de 1 a 30; fora disso, 400)
 com respostas e ações, e os avisos ativos do INMET para o município de cada bairro (se o INMET cair, `avisos` vem vazio, nunca 503).
 O formato completo está em [`docs/contrato-painel.md`](docs/contrato-painel.md) e um exemplo real em [`docs/evidencias/instantaneo.json`](docs/evidencias/instantaneo.json).
 
@@ -355,7 +360,7 @@ classDiagram
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
 - Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **226 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet (os 154 abaixo mais 72 do painel de administração: validações de UF, IBGE, coordenadas e traçado, o serviço do instantâneo e a rota com os dados do piloto e com os 12 bairros):
+- **243 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet (os 154 abaixo mais 89 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo e as rotas com os dados do piloto e com os 12 bairros):
   - 54 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento, value objects);
   - 36 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`), a tradução para o formato do app e o filtro de avisos;
   - 19 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app), o cache e a ligação do Decorator na injeção de dependência;

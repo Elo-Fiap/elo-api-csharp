@@ -35,7 +35,7 @@ Regras gerais:
                "latitude": -23.48, "longitude": -46.409, "tracado": [[-46.41, -23.48], [-46.409, -23.481]] }]
   }],
   "sensores": [{ "id": 1, "codigo": "regua-exemplo", "ruaId": 1, "bairroId": 1, "local": "Córrego...", "latitude": -23.47, "longitude": -46.41,
-                 "limiteMetros": 1.2, "ativo": true, "leituras": [{ "nivelMetros": 1.42, "medidaEm": "2026-11-12T04:50:00Z" }] }],
+                 "limiteMetros": 1.2, "atencaoMetros": 1.0, "ativo": true, "leituras": [{ "nivelMetros": 1.42, "medidaEm": "2026-11-12T04:50:00Z" }] }],
   "chamadas": [{ "id": 2, "bairroId": 1, "tipo": "Real", "abertaEm": "2026-11-12T04:35:00Z", "encerradaEm": null, "avisoTitulo": "Chuvas intensas",
                  "respostas": [{ "id": 10, "ruaId": 3, "situacao": "PrecisoDeAjuda", "pessoas": 6, "respondidaEm": "2026-11-12T04:43:00Z", "recebidaEm": "2026-11-12T04:43:00Z" }],
                  "acoes": [{ "ruaId": 3, "tipo": "VouAteLa", "em": "2026-11-12T04:45:00Z" }] }],
@@ -88,6 +88,7 @@ Regras gerais:
 | `local` | texto | Descrição do ponto. |
 | `latitude`, `longitude` | número ou `null` | Posição da régua no mapa. |
 | `limiteMetros` | número | Leitura **igual ou acima** disso é alerta. |
+| `atencaoMetros` | número ou `null` | Nível de atenção, antes do alerta: sempre menor que `limiteMetros`. `null` quando a régua não tem. Na semente, a `regua-exemplo` tem 1,00 m (o firmware usa 100 cm) e as demais, 0,20 m abaixo do limite. |
 | `ativo` | booleano | Régua inativa não recebe leituras novas. |
 | `leituras` | lista | Só as **últimas 72 horas**, no máximo **500**, **da mais antiga para a mais nova**. Se houver mais de 500, ficam as 500 mais recentes. |
 
