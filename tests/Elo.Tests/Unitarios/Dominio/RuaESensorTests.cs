@@ -114,6 +114,52 @@ public class SensorTests
     }
 
     [Theory]
+    [InlineData(100)]
+    [InlineData(0.5)]
+    [InlineData(119.99)]
+    public void Atencao_maior_que_zero_e_menor_que_o_limite_e_aceita(double atencao)
+    {
+        var sensor = new Sensor(1, "regua-teste", "Ponte", 120, atencao);
+
+        Assert.Equal(atencao, sensor.AtencaoCm);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    [InlineData(120)]
+    [InlineData(150)]
+    [InlineData(double.NaN)]
+    public void Atencao_zero_negativa_ou_a_partir_do_limite_e_recusada(double atencao)
+    {
+        Assert.Throws<RegraDeNegocioException>(() => new Sensor(1, "regua-teste", "Ponte", 120, atencao));
+        Assert.Throws<RegraDeNegocioException>(() => NovoSensor(limite: 120).Atualizar("Ponte", 120, ativo: true, atencao));
+    }
+
+    [Fact]
+    public void Atencao_e_opcional_e_pode_ser_removida_no_Atualizar()
+    {
+        var sensor = new Sensor(1, "regua-teste", "Ponte", 120);
+        Assert.Null(sensor.AtencaoCm);
+
+        sensor.Atualizar("Ponte", 120, ativo: true, atencaoCm: 100);
+        Assert.Equal(100, sensor.AtencaoCm);
+
+        sensor.Atualizar("Ponte", 120, ativo: true);
+        Assert.Null(sensor.AtencaoCm);
+    }
+
+    [Fact]
+    public void Atencao_invalida_no_Atualizar_nao_muda_nada_no_sensor()
+    {
+        var sensor = new Sensor(1, "regua-teste", "Ponte", 120, 100);
+
+        Assert.Throws<RegraDeNegocioException>(() => sensor.Atualizar("Outro local", 90, ativo: false, atencaoCm: 100));
+
+        Assert.Equal(("Ponte", 120, 100, true), (sensor.Local, sensor.LimiteAlertaCm, sensor.AtencaoCm, sensor.Ativo));
+    }
+
+    [Theory]
     [InlineData(-1)]
     [InlineData(501)]
     public void Nivel_fora_da_faixa_do_sensor_e_recusado(double nivel)

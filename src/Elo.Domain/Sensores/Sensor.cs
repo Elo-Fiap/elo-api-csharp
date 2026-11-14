@@ -26,6 +26,12 @@ public class Sensor : Entidade
     /// <summary>Acima deste nível (em cm) a leitura é marcada como alerta.</summary>
     public double LimiteAlertaCm { get; private set; }
 
+    /// <summary>
+    /// Nível (em cm) a partir do qual a régua passa a "atenção", antes do alerta. Opcional;
+    /// quando existe, é maior que 0 e menor que o limite de alerta.
+    /// </summary>
+    public double? AtencaoCm { get; private set; }
+
     public bool Ativo { get; private set; }
 
     /// <summary>Onde o sensor está no mapa. Opcional, sempre junto da longitude.</summary>
@@ -40,21 +46,32 @@ public class Sensor : Entidade
         // Usado pelo EF Core.
     }
 
-    public Sensor(int ruaId, string codigo, string local, double limiteAlertaCm)
+    public Sensor(int ruaId, string codigo, string local, double limiteAlertaCm, double? atencaoCm = null)
     {
         RuaId = Guarda.IdValido(ruaId, "O sensor precisa estar em uma rua.");
         Codigo = NormalizarCodigo(codigo);
-        Atualizar(local, limiteAlertaCm, ativo: true);
+        Atualizar(local, limiteAlertaCm, ativo: true, atencaoCm);
     }
 
     /// <summary>O código é comparado sem diferenciar maiúsculas: "REGUA-EXEMPLO" e "regua-exemplo" são o mesmo sensor.</summary>
     public static string NormalizarCodigo(string? codigo) =>
         Guarda.TextoObrigatorio(codigo, "Código do sensor", TamanhoMaximoCodigo).ToLowerInvariant();
 
-    public void Atualizar(string local, double limiteAlertaCm, bool ativo)
+    /// <param name="atencaoCm">Nível de atenção em cm (opcional): maior que 0 e menor que o limite de alerta. Nulo limpa.</param>
+    public void Atualizar(string local, double limiteAlertaCm, bool ativo, double? atencaoCm = null)
     {
-        Local = Guarda.TextoObrigatorio(local, "Local do sensor", TamanhoMaximoLocal);
-        LimiteAlertaCm = Guarda.Intervalo(limiteAlertaCm, 1, NivelMaximoCm, "Limite de alerta (cm)");
+        var localValido = Guarda.TextoObrigatorio(local, "Local do sensor", TamanhoMaximoLocal);
+        var limiteValido = Guarda.Intervalo(limiteAlertaCm, 1, NivelMaximoCm, "Limite de alerta (cm)");
+
+        if (atencaoCm is double atencao && (double.IsNaN(atencao) || atencao <= 0 || atencao >= limiteValido))
+        {
+            throw new RegraDeNegocioException(
+                $"O nível de atenção (cm) deve ser maior que 0 e menor que o limite de alerta ({limiteValido} cm).");
+        }
+
+        Local = localValido;
+        LimiteAlertaCm = limiteValido;
+        AtencaoCm = atencaoCm;
         Ativo = ativo;
     }
 

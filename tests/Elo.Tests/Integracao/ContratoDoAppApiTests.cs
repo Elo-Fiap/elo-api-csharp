@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Elo.Application.ContratoDoApp;
 
 namespace Elo.Tests.Integracao;
@@ -50,6 +51,61 @@ public class ContratoDoAppLeituraApiTests(EloApiFactory fabrica) : IClassFixture
         Assert.Equal(1.42, regua.NivelMetros);
         Assert.Equal(1.2, regua.LimiteMetros);
         Assert.True(regua.NivelMetros >= regua.LimiteMetros); // o app mostra "acima do limite"
+    }
+
+    [Fact]
+    public async Task Situacao_traz_os_dados_do_bairro_e_a_coordenada_das_ruas_sem_o_tracado()
+    {
+        using var json = JsonDocument.Parse(await _cliente.GetStringAsync("/situacao"));
+        var raiz = json.RootElement;
+
+        // Os campos que o app já lê continuam no começo, e os novos vêm depois.
+        Assert.Equal(["bairro", "chamadaIniciadaEm", "ruas", "bairroId", "cidade", "uf", "codigoIbge", "latitude", "longitude", "percentualSemApp", "semAppMedidoEm"],
+            raiz.EnumerateObject().Select(campo => campo.Name));
+        Assert.Equal("1", raiz.GetProperty("bairroId").GetString());
+        Assert.Equal("São Paulo", raiz.GetProperty("cidade").GetString());
+        Assert.Equal("SP", raiz.GetProperty("uf").GetString());
+        Assert.Equal("3550308", raiz.GetProperty("codigoIbge").GetString());
+        Assert.Equal(-23.47939, raiz.GetProperty("latitude").GetDouble());
+        Assert.Equal(-46.40912, raiz.GetProperty("longitude").GetDouble());
+        Assert.Equal(31, raiz.GetProperty("percentualSemApp").GetDouble());
+        Assert.EndsWith("Z", raiz.GetProperty("semAppMedidoEm").GetString());
+
+        var ruas = raiz.GetProperty("ruas").EnumerateArray().ToList();
+        Assert.Equal(8, ruas.Count);
+        Assert.All(ruas, rua =>
+        {
+            Assert.Equal(["id", "nome", "status", "respondidaEm", "latitude", "longitude"], rua.EnumerateObject().Select(campo => campo.Name));
+            Assert.Equal(JsonValueKind.Number, rua.GetProperty("latitude").ValueKind);
+            Assert.Equal(JsonValueKind.Number, rua.GetProperty("longitude").ValueKind);
+        });
+    }
+
+    [Fact]
+    public async Task Regua_traz_a_rua_a_localizacao_e_o_nivel_de_atencao_em_metros()
+    {
+        using var json = JsonDocument.Parse(await _cliente.GetStringAsync("/regua"));
+        var raiz = json.RootElement;
+
+        Assert.Equal(["reguaId", "local", "nivelMetros", "limiteMetros", "medidaEm", "ruaId", "latitude", "longitude", "atencaoMetros"],
+            raiz.EnumerateObject().Select(campo => campo.Name));
+        Assert.Equal("7", raiz.GetProperty("ruaId").GetString()); // Rua das Palafitas
+        Assert.Equal(-23.476551, raiz.GetProperty("latitude").GetDouble());
+        Assert.Equal(-46.41135, raiz.GetProperty("longitude").GetDouble());
+        Assert.Equal(1.0, raiz.GetProperty("atencaoMetros").GetDouble());
+        Assert.Equal(1.2, raiz.GetProperty("limiteMetros").GetDouble());
+    }
+
+    [Fact]
+    public async Task Regua_sem_localizacao_devolve_coordenada_nula_e_atencao_em_metros_da_outra_regua()
+    {
+        using var json = JsonDocument.Parse(await _cliente.GetStringAsync("/regua?reguaId=regua-barqueiros"));
+        var raiz = json.RootElement;
+
+        Assert.Equal("4", raiz.GetProperty("ruaId").GetString());
+        Assert.Equal(JsonValueKind.Null, raiz.GetProperty("latitude").ValueKind);
+        Assert.Equal(JsonValueKind.Null, raiz.GetProperty("longitude").ValueKind);
+        Assert.Equal(1.3, raiz.GetProperty("atencaoMetros").GetDouble());
     }
 
     [Fact]
@@ -175,6 +231,10 @@ public class ContratoSemChamadaApiTests(EloApiFactory fabrica) : IClassFixture<E
         var situacao = await (await _cliente.GetAsync("/situacao")).LerAsync<SituacaoDoBairroApp>();
         Assert.Null(situacao.ChamadaIniciadaEm);
         Assert.All(situacao.Ruas, rua => Assert.Null(rua.Status));
+
+        // Os dados do bairro e a coordenada das ruas vêm também sem chamada aberta.
+        Assert.Equal(("1", "SP", "3550308", 31.0), (situacao.BairroId, situacao.Uf, situacao.CodigoIbge, situacao.PercentualSemApp));
+        Assert.All(situacao.Ruas, rua => Assert.True(rua.Latitude is not null && rua.Longitude is not null));
 
         var corpo = new { id = "depois-do-fim", ruaId = "1", status = "tudo_bem", criadaEm = Contrato.ComoNoApp(DateTime.UtcNow.AddSeconds(30)) };
         var resposta = await _cliente.PostAsJsonAsync("/chamadas", corpo);

@@ -51,7 +51,7 @@ public class PainelAdminApiTests(EloApiFactory fabrica) : IClassFixture<EloApiFa
 
         var sensor = raiz.GetProperty("sensores")[0];
         Assert.Equal(
-            ["id", "codigo", "ruaId", "bairroId", "local", "latitude", "longitude", "limiteMetros", "ativo", "leituras"],
+            ["id", "codigo", "ruaId", "bairroId", "local", "latitude", "longitude", "limiteMetros", "atencaoMetros", "ativo", "leituras"],
             Campos(sensor));
         Assert.Equal(["nivelMetros", "medidaEm"], Campos(sensor.GetProperty("leituras")[0]));
 
@@ -112,6 +112,7 @@ public class PainelAdminApiTests(EloApiFactory fabrica) : IClassFixture<EloApiFa
         var regua = json.RootElement.GetProperty("sensores").EnumerateArray().First(s => s.GetProperty("codigo").GetString() == "regua-exemplo");
 
         Assert.Equal(1.2, regua.GetProperty("limiteMetros").GetDouble());
+        Assert.Equal(1.0, regua.GetProperty("atencaoMetros").GetDouble());
         Assert.Equal(-23.476551, regua.GetProperty("latitude").GetDouble());
         Assert.Equal(-46.41135, regua.GetProperty("longitude").GetDouble());
         Assert.Equal(1, regua.GetProperty("bairroId").GetInt32());
@@ -309,6 +310,9 @@ public class PainelAdminComBairrosDoPainelApiTests(EloApiFactoryComBairrosDoPain
         // A primeira leitura do arquivo é de exatamente 72 h antes da semente: alguns segundos depois ela já saiu da janela.
         Assert.All(sensores.Where(s => s.GetProperty("codigo").GetString() != "regua-exemplo" && s.GetProperty("codigo").GetString() != "regua-barqueiros"),
             s => Assert.InRange(s.GetProperty("leituras").GetArrayLength(), 432, 433));
+        // Toda régua da semente tem nível de atenção, 20 cm abaixo do limite.
+        Assert.All(sensores, s => Assert.Equal(
+            Math.Round(s.GetProperty("limiteMetros").GetDouble() - 0.2, 2), s.GetProperty("atencaoMetros").GetDouble(), 2));
 
         var chamadas = raiz.GetProperty("chamadas").EnumerateArray().ToList();
         Assert.Equal(21, chamadas.Count); // 19 do arquivo (fora o bairro 1) + 2 do piloto

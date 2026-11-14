@@ -86,8 +86,8 @@ internal static class DadosDeExemplo
 
         // 3. Réguas (ESP32 + HC-SR04) nos pontos críticos, com leituras da última hora (a cada 10 minutos).
         //    "regua-exemplo" é o id fixo no firmware da régua da equipe (repositório elo-regua-esp32), limite de 1,20 m.
-        var reguaPalafitas = new Sensor(palafitas.Id, "regua-exemplo", "Córrego do bairro, na ponte da Rua das Palafitas (simulado)", 120);
-        var reguaBarqueiros = new Sensor(barqueiros.Id, "regua-barqueiros", "Bueiro da esquina com a Rua da Várzea (simulado)", 150);
+        var reguaPalafitas = new Sensor(palafitas.Id, "regua-exemplo", "Córrego do bairro, na ponte da Rua das Palafitas (simulado)", 120, atencaoCm: 100);
+        var reguaBarqueiros = new Sensor(barqueiros.Id, "regua-barqueiros", "Bueiro da esquina com a Rua da Várzea (simulado)", 150, atencaoCm: 130);
         reguaPalafitas.DefinirLocalizacao(geografia.PontoDaRegua.Latitude, geografia.PontoDaRegua.Longitude);
         contexto.Sensores.AddRange(reguaPalafitas, reguaBarqueiros);
         await contexto.SaveChangesAsync(cancellationToken);

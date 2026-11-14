@@ -49,6 +49,7 @@ public sealed record SensorAdminDto(
     double? Latitude,
     double? Longitude,
     double LimiteMetros,
+    double? AtencaoMetros,
     bool Ativo,
     IReadOnlyList<LeituraAdminDto> Leituras);
 

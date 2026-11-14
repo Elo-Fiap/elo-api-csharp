@@ -161,6 +161,7 @@ internal static class Mapeamentos
         item.Sensor.Codigo,
         item.Sensor.Local,
         item.Sensor.LimiteAlertaCm,
+        item.Sensor.AtencaoCm,
         item.Sensor.Ativo,
         item.UltimaLeitura?.ParaDto());
 

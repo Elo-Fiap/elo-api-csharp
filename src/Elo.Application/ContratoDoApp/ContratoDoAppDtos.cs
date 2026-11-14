@@ -16,18 +16,35 @@ public sealed class ContratoDoAppOptions
     public string ReguaPadrao { get; set; } = "regua-exemplo";
 }
 
-/// <summary>GET /situacao: a situação do bairro na chamada atual.</summary>
+/// <summary>
+/// GET /situacao: a situação do bairro na chamada atual.
+/// Os campos depois de "ruas" são aditivos e opcionais (nulos quando o bairro não os tem):
+/// quem lê só "bairro", "chamadaIniciadaEm" e "ruas" continua funcionando.
+/// </summary>
 public sealed record SituacaoDoBairroApp(
     string Bairro,
     string? ChamadaIniciadaEm,
-    IReadOnlyList<RuaDoApp> Ruas);
+    IReadOnlyList<RuaDoApp> Ruas,
+    string BairroId,
+    string Cidade,
+    string? Uf,
+    string? CodigoIbge,
+    double? Latitude,
+    double? Longitude,
+    double? PercentualSemApp,
+    string? SemAppMedidoEm);
 
-/// <summary>Uma rua para o app. "status" nulo = silêncio (a rua ainda não respondeu nesta chamada).</summary>
+/// <summary>
+/// Uma rua para o app. "status" nulo = silêncio (a rua ainda não respondeu nesta chamada).
+/// "latitude" e "longitude" são opcionais e vêm sempre em par.
+/// </summary>
 public sealed record RuaDoApp(
     string Id,
     string Nome,
     string? Status,
-    string? RespondidaEm);
+    string? RespondidaEm,
+    double? Latitude,
+    double? Longitude);
 
 /// <summary>POST /chamadas: o que a liderança da rua respondeu no app (a "chamada" do app).</summary>
 public sealed record ChamadaDoAppRequest
@@ -69,13 +86,21 @@ public sealed record ChamadaDoAppDto(
     string CriadaEm,
     string RecebidaEm);
 
-/// <summary>GET /regua: a última leitura da régua de nível, em metros.</summary>
+/// <summary>
+/// GET /regua: a última leitura da régua de nível, em metros.
+/// "ruaId" é o id da rua (o mesmo do GET /situacao); "latitude" e "longitude" vêm em par;
+/// "atencaoMetros" é o nível de atenção, menor que o limite. Todos opcionais.
+/// </summary>
 public sealed record LeituraDaReguaApp(
     string ReguaId,
     string Local,
     double NivelMetros,
     double LimiteMetros,
-    string MedidaEm);
+    string MedidaEm,
+    string RuaId,
+    double? Latitude,
+    double? Longitude,
+    double? AtencaoMetros);
 
 /// <summary>POST /leituras: o que o ESP32 envia.</summary>
 public sealed record LeituraDoEsp32Request

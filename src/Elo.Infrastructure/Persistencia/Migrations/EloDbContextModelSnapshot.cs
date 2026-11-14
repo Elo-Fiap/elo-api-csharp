@@ -272,6 +272,9 @@ namespace Elo.Infrastructure.Persistencia.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<double?>("AtencaoCm")
+                        .HasColumnType("REAL");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("INTEGER");
 

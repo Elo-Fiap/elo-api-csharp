@@ -62,7 +62,9 @@ internal static class SementeDoPainel
         // 3. Réguas com as leituras (a régua do bairro 1 do arquivo não entra: o piloto já tem a dele).
         foreach (var origem in arquivo.Reguas.Where(regua => regua.BairroId != 1))
         {
-            var sensor = new Sensor(ruas[origem.RuaId].Id, origem.Id, origem.Local, EmCentimetros(origem.LimiteMetros));
+            // Nível de atenção: 20 cm abaixo do limite.
+            var limiteCm = EmCentimetros(origem.LimiteMetros);
+            var sensor = new Sensor(ruas[origem.RuaId].Id, origem.Id, origem.Local, limiteCm, atencaoCm: limiteCm - 20);
             sensor.DefinirLocalizacao(origem.Latitude, origem.Longitude);
             contexto.Sensores.Add(sensor);
             await contexto.SaveChangesAsync(cancellationToken);

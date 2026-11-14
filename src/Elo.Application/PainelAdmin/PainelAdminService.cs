@@ -132,6 +132,7 @@ public sealed class PainelAdminService(
         item.Sensor.Latitude,
         item.Sensor.Longitude,
         CentimetrosParaMetros(item.Sensor.LimiteAlertaCm),
+        item.Sensor.AtencaoCm is double atencao ? CentimetrosParaMetros(atencao) : null,
         item.Sensor.Ativo,
         [.. item.Leituras
             .OrderBy(leitura => leitura.MedidaEm)

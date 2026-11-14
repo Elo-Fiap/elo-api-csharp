@@ -1,6 +1,7 @@
 using Elo.Application.Abstracoes;
 using Elo.Application.Comum;
 using Elo.Application.Painel;
+using Elo.Domain.Bairros;
 using Elo.Domain.Chamadas;
 using Elo.Domain.Comum;
 using Elo.Domain.Ruas;
@@ -53,22 +54,25 @@ public sealed class ContratoDoAppService(
         {
             // Sem chamada em andamento: "chamadaIniciadaEm" nulo e todas as ruas em silêncio.
             var ruasAtivas = await ruas.ListarPorBairroAsync(id, null, null, incluirInativas: false, cancellationToken);
-            return new SituacaoDoBairroApp(
-                bairro.Nome,
+            return ParaApp(
+                bairro,
                 null,
-                [.. ruasAtivas.OrderBy(rua => rua.Nome).Select(rua => new RuaDoApp(FormatoDoApp.Id(rua.Id), rua.Nome, null, null))]);
+                [.. ruasAtivas.OrderBy(rua => rua.Nome).Select(rua => new RuaDoApp(
+                    FormatoDoApp.Id(rua.Id), rua.Nome, null, null, rua.Latitude, rua.Longitude))]);
         }
 
         // Mesma ordem do painel do coordenador (o LINQ do PriorizadorDeRuas); o app pode reordenar.
         var situacoes = await montador.MontarAsync(chamada, cancellationToken);
-        return new SituacaoDoBairroApp(
-            bairro.Nome,
+        return ParaApp(
+            bairro,
             FormatoDoApp.Data(chamada.IniciadaEm),
             [.. situacoes.RuasEmOrdem.Select(situacao => new RuaDoApp(
                 FormatoDoApp.Id(situacao.Rua.Id),
                 situacao.Rua.Nome,
                 situacao.UltimaResposta is { } resposta ? FormatoDoApp.Status(resposta.Situacao) : null,
-                situacao.UltimaResposta is { } respondida ? FormatoDoApp.Data(respondida.RespondidaEm) : null))]);
+                situacao.UltimaResposta is { } respondida ? FormatoDoApp.Data(respondida.RespondidaEm) : null,
+                situacao.Rua.Latitude,
+                situacao.Rua.Longitude))]);
     }
 
     public async Task<ResultadoDeRegistro<ChamadaDoAppDto>> RegistrarChamadaAsync(
@@ -135,7 +139,11 @@ public sealed class ContratoDoAppService(
             item.Sensor.Local,
             FormatoDoApp.Metros(leitura.NivelCm),
             FormatoDoApp.Metros(leitura.LimiteNaHoraCm),
-            FormatoDoApp.Data(leitura.MedidaEm));
+            FormatoDoApp.Data(leitura.MedidaEm),
+            FormatoDoApp.Id(item.Sensor.RuaId),
+            item.Sensor.Latitude,
+            item.Sensor.Longitude,
+            item.Sensor.AtencaoCm is double atencao ? FormatoDoApp.Metros(atencao) : null);
     }
 
     public async Task RegistrarLeituraAsync(LeituraDoEsp32Request request, CancellationToken cancellationToken = default)
@@ -180,6 +188,19 @@ public sealed class ContratoDoAppService(
         var rua = id is int valor ? await ruas.ObterPorIdAsync(valor, cancellationToken) : null;
         return rua ?? throw new RecursoNaoEncontradoException($"Rua {ruaId} não encontrada.");
     }
+
+    private static SituacaoDoBairroApp ParaApp(Bairro bairro, string? chamadaIniciadaEm, IReadOnlyList<RuaDoApp> ruas) => new(
+        bairro.Nome,
+        chamadaIniciadaEm,
+        ruas,
+        FormatoDoApp.Id(bairro.Id),
+        bairro.Cidade,
+        bairro.Uf,
+        bairro.CodigoIbge,
+        bairro.Latitude,
+        bairro.Longitude,
+        bairro.PercentualSemApp,
+        bairro.SemAppMedidoEm is { } medidoEm ? FormatoDoApp.Data(medidoEm) : null);
 
     private static ChamadaDoAppDto ParaApp(Resposta resposta) => new(
         resposta.IdLocal,
