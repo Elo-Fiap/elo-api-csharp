@@ -136,8 +136,8 @@ A resposta da liderança só entra se houver **chamada aberta** no bairro (o coo
 (para o botão "Ver no mapa"). O `GET /regua` traz `ruaId`, `latitude`, `longitude` e `atencaoMetros` (o nível de atenção, abaixo do limite;
 na `regua-exemplo`, 1,00 m, como o firmware). São campos opcionais: o app que só lê os antigos continua funcionando.
 
-Para os avisos, o app usa `GET /avisos?codigoIbge=<código da área>` quando a API do bairro está configurada
-(branch `feat/dados-reais` do `elo-app`); sem ela, continua baixando o INMET direto.
+Para os avisos, o app usa `GET /avisos?codigoIbge=<código da área>` quando a API do bairro está configurada;
+sem ela, continua baixando o INMET direto.
 A resposta já vem com os campos do tipo `Aviso` do app (`id`, `titulo`, `severidade`, `gravidade`, `inicio`, `fim`,
 `quando`, `riscos`, `instrucoes`), filtrada e ordenada, e o app usa a lista sem passar pela `normalizarAvisos`.
 
@@ -360,7 +360,7 @@ classDiagram
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
 - Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **243 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet (os 154 abaixo mais 89 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo e as rotas com os dados do piloto e com os 12 bairros):
+- **248 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet (os 154 abaixo mais 94 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo, as rotas com os dados do piloto e com os 12 bairros, e a espera do cache do INMET depois de falha):
   - 54 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento, value objects);
   - 36 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`), a tradução para o formato do app e o filtro de avisos;
   - 19 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app), o cache e a ligação do Decorator na injeção de dependência;
@@ -411,10 +411,12 @@ classDiagram
 - **SQLite** para quem avaliar rodar sem instalar banco. Trocar para Oracle ou SQL Server muda só o provedor no `AddInfrastructure` e as migrations.
 - **Sem login de usuário** nesta versão, como no contrato do app ("o app não faz login"). O ESP32 usa uma chave; hoje é **uma chave para todos os dispositivos**. O próximo passo seria uma chave por régua e login do coordenador.
 - **Datas em UTC** na API; o app converte para o horário local.
-- O `GET /avisos` já filtra o INMET no servidor, como o contrato recomenda. O app passa a usar essa lista com a API configurada na branch `feat/dados-reais` do `elo-app`, ainda sem merge (veja [Ligar o app e a régua](#ligar-o-app-e-a-régua-esp32)).
+- O `GET /avisos` já filtra o INMET no servidor, como o contrato recomenda. O app passa a usar essa lista com a API configurada (veja [Ligar o app e a régua](#ligar-o-app-e-a-régua-esp32)).
 - Sem internet no servidor, o `/avisos` devolve 503; o resto da API funciona normalmente. O INMET não publica um contrato dessa API, então o leitor aceita as variações já vistas (listas em texto do Python, `encerrado` como texto).
 - O `bateriaPercentual` do ESP32 é aceito, mas não é guardado (a régua simulada não tem bateria).
 - Sem chamada aberta, `POST /chamadas` devolve 422 e o app deixa a resposta pendente para tentar de novo. Abrir a chamada é papel do coordenador (`/api/bairros/{id}/chamadas`).
+- **Os PUT trocam o registro inteiro.** Em `PUT /api/bairros/{id}`, deixar de fora `uf`, `codigoIbge`, as coordenadas ou o `percentualSemApp` apaga esses campos; em `PUT /api/sensores/{id}`, deixar de fora `atencaoCm` apaga o nível de atenção. Quem edita manda o registro todo, como ele veio no GET.
+- **Posição de rua e de régua só pela semente.** Não há rota para gravar a coordenada ou o traçado da rua, nem a posição da régua. Um `elo.db` criado antes da migração `PainelAdmin` fica sem mapa até ser recriado (apagar o arquivo recria tudo com os dados de exemplo, e as leituras reais se perdem).
 - O mascaramento acha CPF, telefone e e-mail; nomes e doenças ficam com o módulo de Cybersecurity da CitizenTech.
 
 ## Uso de IA

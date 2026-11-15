@@ -143,7 +143,7 @@ public sealed class ContratoDoAppService(
             FormatoDoApp.Id(item.Sensor.RuaId),
             item.Sensor.Latitude,
             item.Sensor.Longitude,
-            item.Sensor.AtencaoCm is double atencao ? FormatoDoApp.Metros(atencao) : null);
+            FormatoDoApp.AtencaoMetros(item.Sensor.AtencaoCm, leitura.LimiteNaHoraCm));
     }
 
     public async Task RegistrarLeituraAsync(LeituraDoEsp32Request request, CancellationToken cancellationToken = default)

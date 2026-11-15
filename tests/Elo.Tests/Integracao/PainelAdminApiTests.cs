@@ -303,13 +303,13 @@ public class PainelAdminComBairrosDoPainelApiTests(EloApiFactoryComBairrosDoPain
         Assert.Equal(86, ruas.Count);
         Assert.Equal(8, ruas.Count(r => r.GetProperty("tracado").ValueKind == JsonValueKind.Array));
 
-        // 2 do piloto + 7 réguas do arquivo (a "regua-exemplo" do arquivo é a do piloto), com 433 leituras cada, 432 ou 433 dentro da janela (72 h, de 10 em 10 minutos).
+        // 2 do piloto + 7 réguas do arquivo (a "regua-exemplo" do arquivo é a do piloto), com 433 leituras cada; de 430 a 433 dentro da janela (72 h, de 10 em 10 minutos), conforme o tempo entre a semente e o pedido.
         var sensores = raiz.GetProperty("sensores").EnumerateArray().ToList();
         Assert.Equal(9, sensores.Count);
         Assert.Contains(sensores, s => s.GetProperty("codigo").GetString() == "regua-2" && s.GetProperty("bairroId").GetInt32() == 2);
         // A primeira leitura do arquivo é de exatamente 72 h antes da semente: alguns segundos depois ela já saiu da janela.
         Assert.All(sensores.Where(s => s.GetProperty("codigo").GetString() != "regua-exemplo" && s.GetProperty("codigo").GetString() != "regua-barqueiros"),
-            s => Assert.InRange(s.GetProperty("leituras").GetArrayLength(), 432, 433));
+            s => Assert.InRange(s.GetProperty("leituras").GetArrayLength(), 430, 433));
         // Toda régua da semente tem nível de atenção, 20 cm abaixo do limite.
         Assert.All(sensores, s => Assert.Equal(
             Math.Round(s.GetProperty("limiteMetros").GetDouble() - 0.2, 2), s.GetProperty("atencaoMetros").GetDouble(), 2));

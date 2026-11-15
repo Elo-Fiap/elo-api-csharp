@@ -53,4 +53,20 @@ public static class FormatoDoApp
         int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var valor) && valor > 0 ? valor : null;
 
     public static double Metros(double centimetros) => Math.Round(centimetros / 100, 2);
+
+    /// <summary>
+    /// Nível de atenção em metros, conferido contra o limite que vai na mesma resposta.
+    /// O limite da leitura é o da hora em que ela chegou; se o cadastro mudou depois, ou se o
+    /// arredondamento empata, a atenção sai nula em vez de ficar igual ou acima do limite.
+    /// </summary>
+    public static double? AtencaoMetros(double? atencaoCm, double limiteCm)
+    {
+        if (atencaoCm is not double atencao)
+        {
+            return null;
+        }
+
+        var metros = Metros(atencao);
+        return metros > 0 && metros < Metros(limiteCm) ? metros : null;
+    }
 }

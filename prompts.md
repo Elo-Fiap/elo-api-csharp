@@ -117,4 +117,4 @@ Decisões da IA que a equipe precisa conferir:
 - No `PUT /api/sensores/{id}`, omitir `atencaoCm` apaga o nível de atenção (o PUT troca o recurso inteiro).
 - O painel e o app leem tudo desta API; o Elo Alertas tem as mesmas rotas da régua, mas os dois serviços não trocam dados.
 
-No fim, 243 testes passando.
+No fim, 243 testes passando. Na revisão do PR, mais 5 (248): o nível de atenção do `/regua` sempre abaixo do limite da mesma resposta, e o cache do INMET espera 1 minuto depois de falha mesmo sem lista guardada.

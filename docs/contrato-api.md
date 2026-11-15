@@ -76,7 +76,7 @@ Exemplo com os dados do piloto:
 ```json
 {
   "bairro": "Jardim Pantanal (simulado)", "chamadaIniciadaEm": "2026-11-12T04:35:00.000Z",
-  "ruas": [{ "id": "7", "nome": "Rua das Palafitas", "status": null, "respondidaEm": null, "latitude": -23.4766, "longitude": -46.4114 }],
+  "ruas": [{ "id": "7", "nome": "Rua das Palafitas", "status": null, "respondidaEm": null, "latitude": -23.476328, "longitude": -46.409999 }],
   "bairroId": "1", "cidade": "São Paulo", "uf": "SP", "codigoIbge": "3550308",
   "latitude": -23.47939, "longitude": -46.40912,
   "percentualSemApp": 31, "semAppMedidoEm": "2026-09-28T05:00:00.000Z"
@@ -120,7 +120,7 @@ e também `gravidade` (1, 2 ou 3) e `quando` (`hoje` ou `futuro`): são exatamen
 | Tamanho | Na evidência, 148.353 bytes do INMET viraram 2.333 bytes para o município |
 
 **No app:** com `usaApiDoBairro()`, o `buscarAvisos` do `inmet.ts` chama `GET {API}/avisos?codigoIbge=...` e usa a lista
-como `Aviso[]`, sem passar pela `normalizarAvisos` (branch `feat/dados-reais` do `elo-app`). Item fora do formato é descartado;
+como `Aviso[]`, sem passar pela `normalizarAvisos`. Item fora do formato é descartado;
 resposta que não é lista conta como erro, e o app mostra o último aviso guardado. Sem a API, o app segue baixando o INMET direto.
 
 ## Exemplos
