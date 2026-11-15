@@ -148,6 +148,8 @@ GET {{Elo}}/api/bairros/1/indicadores
 # ---------------------------------------------------------------------------
 
 ### App: situação do bairro (status tudo_bem / agua_subindo / preciso_ajuda; null = silêncio)
+# Além de bairro, chamadaIniciadaEm e ruas, vêm bairroId, cidade, uf, codigoIbge, latitude, longitude,
+# percentualSemApp e semAppMedidoEm (o simulado sem o app); cada rua traz latitude e longitude.
 GET {{Elo}}/situacao
 
 ### App: a liderança responde (o "id" é criado no app; reenviar o mesmo id devolve 200)
@@ -164,7 +166,11 @@ Content-Type: application/json
 }
 
 ### App: última leitura da régua, em metros
+# Traz também ruaId, latitude, longitude e atencaoMetros (a regua-exemplo tem 1 m de atenção e 1,2 m de limite).
 GET {{Elo}}/regua
+
+### App: a régua da Rua dos Barqueiros (a segunda do piloto, sem coordenada, com atenção de 1,3 m)
+GET {{Elo}}/regua?reguaId=regua-barqueiros
 
 ### App: plano da rua (404 = rua sem plano)
 GET {{Elo}}/ruas/1/plano
@@ -180,4 +186,18 @@ X-Chave-Dispositivo: troque-pela-chave-configurada
 {
   "reguaId": "regua-exemplo",
   "nivelMetros": 1.42
+}
+
+### Painel de administração: tudo em uma rota (dias = 1 a 30). Cada sensor traz limiteMetros e atencaoMetros.
+GET {{Elo}}/api/admin/instantaneo?dias=30
+
+### Cadastro: trocar o nível de atenção da régua 1 (em cm, maior que 0 e menor que o limite; sem atencaoCm, remove)
+PUT {{Elo}}/api/sensores/1
+Content-Type: application/json
+
+{
+  "local": "Córrego do bairro, na ponte da Rua das Palafitas (simulado)",
+  "limiteAlertaCm": 120,
+  "atencaoCm": 100,
+  "ativo": true
 }

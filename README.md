@@ -32,6 +32,7 @@
 - [Como executar](#como-executar)
 - [Ligar o app e a régua (ESP32)](#ligar-o-app-e-a-régua-esp32)
 - [Endpoints](#endpoints)
+- [Painel de administração](#painel-de-administração)
 - [Arquitetura](#arquitetura)
 - [Onde cada critério da avaliação aparece](#onde-cada-critério-da-avaliação-aparece)
 - [Regras de negócio](#regras-de-negócio)
@@ -130,19 +131,24 @@ A resposta da liderança só entra se houver **chamada aberta** no bairro (o coo
 `POST /api/bairros/1/chamadas`). Nos dados simulados já existe uma aberta. O bairro atendido pelas rotas do app é o
 `ContratoDoApp:BairroId` do `appsettings.json` (o contrato diz que cada bairro do piloto tem a sua URL).
 
-Para os avisos, o app pode trocar a chamada direta ao INMET por `GET /avisos?codigoIbge=<código da área>`.
+**Dados que o app recebe além do básico.** O `GET /situacao` traz `bairroId`, `cidade`, `uf`, `codigoIbge`, `latitude`, `longitude`,
+`percentualSemApp` e `semAppMedidoEm` (o simulado sem o app, base do indicador de impacto) e, em cada rua, `latitude` e `longitude`
+(para o botão "Ver no mapa"). O `GET /regua` traz `ruaId`, `latitude`, `longitude` e `atencaoMetros` (o nível de atenção, abaixo do limite;
+na `regua-exemplo`, 1,00 m, como o firmware). São campos opcionais: o app que só lê os antigos continua funcionando.
+
+Para os avisos, o app usa `GET /avisos?codigoIbge=<código da área>` quando a API do bairro está configurada;
+sem ela, continua baixando o INMET direto.
 A resposta já vem com os campos do tipo `Aviso` do app (`id`, `titulo`, `severidade`, `gravidade`, `inicio`, `fim`,
-`quando`, `riscos`, `instrucoes`), filtrada e ordenada. Como a função `normalizarAvisos` do app espera o formato bruto do
-INMET, o `inmet.ts` precisa de um ramo que use essa lista direto quando a API do bairro estiver configurada.
+`quando`, `riscos`, `instrucoes`), filtrada e ordenada, e o app usa a lista sem passar pela `normalizarAvisos`.
 
 **Régua (`elo-regua-esp32`).** O `sketch.ino` manda `POST /leituras` com `{"reguaId":"regua-exemplo","nivelMetros":1.42}`
-e o header `X-Chave-Dispositivo`. A `regua-exemplo` já vem cadastrada, com limite de 1,20 m como no firmware.
+e o header `X-Chave-Dispositivo`. A `regua-exemplo` já vem cadastrada na Rua das Palafitas, com limite de 1,20 m e atenção de 1,00 m, como no firmware.
 A chave **não fica no repositório**: configure por variável de ambiente (`Dispositivos__Chave`) ou `dotnet user-secrets`.
 Sem chave configurada, só o ambiente de desenvolvimento aceita a leitura (para testar no Swagger).
 
 ## Endpoints
 
-São 41 operações REST, todas assíncronas e documentadas no Swagger/Scalar.
+São 42 operações REST, todas assíncronas e documentadas no Swagger/Scalar.
 
 ### Rotas do contrato do app e do ESP32 (sem `/api`)
 
@@ -151,9 +157,9 @@ status `tudo_bem`, `agua_subindo`, `preciso_ajuda` (nulo = silêncio), ids em te
 
 | Método | Rota | O que faz |
 |---|---|---|
-| GET | `/situacao` | Situação do bairro na chamada atual, na ordem do painel (tela "Bairro" do app) |
+| GET | `/situacao` | Situação do bairro na chamada atual, na ordem do painel (tela "Bairro" do app), com cidade, UF, código IBGE, coordenadas e o `percentualSemApp` |
 | POST | `/chamadas` | Recebe a resposta da rua enviada pelo app (201; 200 se o mesmo `id` já tinha chegado) |
-| GET | `/regua` | Última leitura da régua, em metros (`?reguaId=` opcional) |
+| GET | `/regua` | Última leitura da régua, em metros (`?reguaId=` opcional), com `ruaId`, coordenadas e `atencaoMetros` |
 | GET | `/ruas/{id}/plano` | Plano da rua com contatos de emergência (404 = rua sem plano) |
 | GET | `/avisos?codigoIbge=` | Avisos do INMET que valem para o município, já filtrados e limpos (503 se o INMET estiver fora e não houver nada guardado) |
 | POST | `/leituras` | Leitura do ESP32, com o header `X-Chave-Dispositivo` (204) |
@@ -189,7 +195,36 @@ Nos dados simulados: bairro `1`, treino antigo = chamada `1`, chamada real abert
 | GET / POST | `/api/sensores/{id}/leituras` | Lista as últimas leituras ou registra uma leitura (em cm) |
 | GET | `/api/sensores/{id}/leituras/{leituraId}` | Detalha uma leitura (é para cá que aponta o `Location` do 201) |
 
-Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md).
+Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md). O painel de administração usa uma rota própria, `GET /api/admin/instantaneo` (veja [Painel de administração](#painel-de-administração)).
+
+## Painel de administração
+
+O painel web de administração (`elo-admin`) lê tudo de **uma rota só**:
+
+```bash
+curl 'http://localhost:5080/api/admin/instantaneo?dias=30'
+```
+
+Devolve todos os bairros com todas as ruas (com UF, código IBGE, coordenadas, traçado no mapa e o resultado do simulado sem o app),
+as réguas com o limite e o nível de atenção (`limiteMetros`, `atencaoMetros`) e as leituras das últimas 72 horas (em metros), as chamadas abertas ou abertas nos últimos `dias` dias (de 1 a 30; fora disso, 400)
+com respostas e ações, e os avisos ativos do INMET para o município de cada bairro (se o INMET cair, `avisos` vem vazio, nunca 503).
+O formato completo está em [`docs/contrato-painel.md`](docs/contrato-painel.md) e um exemplo real em [`docs/evidencias/instantaneo.json`](docs/evidencias/instantaneo.json).
+
+**Bairros extras.** Além do piloto, a semente cria mais 11 bairros simulados (ids 2 a 12, de outras cidades) com ruas, réguas, chamadas, respostas e ações,
+a partir de [`Semente/semente-painel.json`](src/Elo.Infrastructure/Persistencia/Semente/semente-painel.json). Quem controla é a configuração
+`DadosDeExemplo:IncluirBairrosDoPainel` no `appsettings.json` (padrão `true`; use `false` para ter só o piloto, como nos testes de integração atuais).
+Os tempos do arquivo são "minutos atrás" e viram datas a partir do momento em que o banco é criado.
+
+**Recriar o banco.** A semente só roda com o banco vazio. Para recomeçar (ou para os dados voltarem a ser "de agora"), pare a API,
+apague `src/Elo.Api/elo.db` e rode de novo:
+
+```bash
+rm src/Elo.Api/elo.db
+dotnet run --project src/Elo.Api
+```
+
+**Créditos.** Os traçados das 8 ruas do piloto são reais, do **OpenStreetMap** (© colaboradores do OpenStreetMap, licença
+[ODbL](https://www.openstreetmap.org/copyright)), usados com os nomes fictícios da API. Os dados de bairros, ruas, réguas e chamadas são todos simulados.
 
 ## Arquitetura
 
@@ -325,7 +360,7 @@ classDiagram
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
 - Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **154 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet:
+- **248 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet (os 154 abaixo mais 94 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo, as rotas com os dados do piloto e com os 12 bairros, e a espera do cache do INMET depois de falha):
   - 54 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento, value objects);
   - 36 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`), a tradução para o formato do app e o filtro de avisos;
   - 19 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app), o cache e a ligação do Decorator na injeção de dependência;
@@ -376,10 +411,12 @@ classDiagram
 - **SQLite** para quem avaliar rodar sem instalar banco. Trocar para Oracle ou SQL Server muda só o provedor no `AddInfrastructure` e as migrations.
 - **Sem login de usuário** nesta versão, como no contrato do app ("o app não faz login"). O ESP32 usa uma chave; hoje é **uma chave para todos os dispositivos**. O próximo passo seria uma chave por régua e login do coordenador.
 - **Datas em UTC** na API; o app converte para o horário local.
-- O `GET /avisos` já filtra o INMET no servidor, como o contrato recomenda, mas o app ainda busca o INMET direto até ganhar o ramo que lê a lista pronta (veja [Ligar o app e a régua](#ligar-o-app-e-a-régua-esp32)).
+- O `GET /avisos` já filtra o INMET no servidor, como o contrato recomenda. O app passa a usar essa lista com a API configurada (veja [Ligar o app e a régua](#ligar-o-app-e-a-régua-esp32)).
 - Sem internet no servidor, o `/avisos` devolve 503; o resto da API funciona normalmente. O INMET não publica um contrato dessa API, então o leitor aceita as variações já vistas (listas em texto do Python, `encerrado` como texto).
 - O `bateriaPercentual` do ESP32 é aceito, mas não é guardado (a régua simulada não tem bateria).
 - Sem chamada aberta, `POST /chamadas` devolve 422 e o app deixa a resposta pendente para tentar de novo. Abrir a chamada é papel do coordenador (`/api/bairros/{id}/chamadas`).
+- **Os PUT trocam o registro inteiro.** Em `PUT /api/bairros/{id}`, deixar de fora `uf`, `codigoIbge`, as coordenadas ou o `percentualSemApp` apaga esses campos; em `PUT /api/sensores/{id}`, deixar de fora `atencaoCm` apaga o nível de atenção. Quem edita manda o registro todo, como ele veio no GET.
+- **Posição de rua e de régua só pela semente.** Não há rota para gravar a coordenada ou o traçado da rua, nem a posição da régua. Um `elo.db` criado antes da migração `PainelAdmin` fica sem mapa até ser recriado (apagar o arquivo recria tudo com os dados de exemplo, e as leituras reais se perdem).
 - O mascaramento acha CPF, telefone e e-mail; nomes e doenças ficam com o módulo de Cybersecurity da CitizenTech.
 
 ## Uso de IA

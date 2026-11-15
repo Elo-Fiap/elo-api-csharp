@@ -27,7 +27,17 @@ public sealed class BairroService(
     {
         await GarantirNomeLivreAsync(request, ignorarId: null, cancellationToken);
 
-        var bairro = new Bairro(request.Nome, request.Cidade, request.Subprefeitura, request.DadosSimulados);
+        var bairro = new Bairro(
+            request.Nome,
+            request.Cidade,
+            request.Subprefeitura,
+            request.DadosSimulados,
+            request.Uf,
+            request.CodigoIbge,
+            request.Latitude,
+            request.Longitude,
+            request.PercentualSemApp,
+            request.SemAppMedidoEm?.UtcDateTime);
         bairros.Adicionar(bairro);
         await unitOfWork.SalvarAsync(cancellationToken);
 
@@ -42,7 +52,17 @@ public sealed class BairroService(
 
         await GarantirNomeLivreAsync(request, ignorarId: id, cancellationToken);
 
-        bairro.Atualizar(request.Nome, request.Cidade, request.Subprefeitura, request.DadosSimulados);
+        bairro.Atualizar(
+            request.Nome,
+            request.Cidade,
+            request.Subprefeitura,
+            request.DadosSimulados,
+            request.Uf,
+            request.CodigoIbge,
+            request.Latitude,
+            request.Longitude,
+            request.PercentualSemApp,
+            request.SemAppMedidoEm?.UtcDateTime);
         await unitOfWork.SalvarAsync(cancellationToken);
         return bairro.ParaDetalheDto();
     }

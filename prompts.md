@@ -96,3 +96,25 @@ Com isso, a IA:
 - explicou no README por que a segunda migration não gera SQL.
 
 No fim, 154 testes passando e build sem avisos.
+
+## Painel de administração e dados para o app (João, 12 e 14/11/2026)
+
+> queria tambem fazer um site web de admin, só que com gráficos e monitoramentos com overview geral [...] com o mapa do brasil [...] e ver numa rua em especifico [...] onde está localizado o esp e onde foi o chamado
+
+> Você pode agora atualizar o mobile e o de SOA para receber esses dados [...] e aí atualizar todas as documentações
+
+Ferramenta: Claude Code. Com isso, a IA:
+
+- acrescentou ao domínio UF, código IBGE e coordenadas do bairro, coordenadas e traçado da rua (do OpenStreetMap), coordenadas da régua e o resultado do simulado sem o app (`PercentualSemApp`, `SemAppMedidoEm`), com as migrations `PainelAdmin` e `NivelDeAtencao`;
+- semeou 11 bairros simulados extras para o painel (`semente-painel.json`, desligável por `DadosDeExemplo:IncluirBairrosDoPainel`);
+- criou `GET /api/admin/instantaneo`, que o painel web (`elo-admin`) lê a cada 15 segundos;
+- acrescentou o nível de atenção da régua (`AtencaoCm`, 100 cm na `regua-exemplo`, como o firmware) e campos opcionais em `GET /situacao` (bairro, coordenadas, "sem o app") e `GET /regua` (rua, coordenadas, atenção), que o app passa a ler;
+- documentou tudo em `docs/contrato-painel.md`, `docs/contrato-api.md` e neste README.
+
+Decisões da IA que a equipe precisa conferir:
+
+- Os percentuais "sem o app" da semente (31% no piloto, de 22% a 40% nos outros bairros) são inventados. O valor de verdade sai do simulado por WhatsApp e telefone e entra pelo `PUT /api/bairros/{id}`.
+- No `PUT /api/sensores/{id}`, omitir `atencaoCm` apaga o nível de atenção (o PUT troca o recurso inteiro).
+- O painel e o app leem tudo desta API; o Elo Alertas tem as mesmas rotas da régua, mas os dois serviços não trocam dados.
+
+No fim, 243 testes passando. Na revisão do PR, mais 5 (248): o nível de atenção do `/regua` sempre abaixo do limite da mesma resposta, e o cache do INMET espera 1 minuto depois de falha mesmo sem lista guardada.

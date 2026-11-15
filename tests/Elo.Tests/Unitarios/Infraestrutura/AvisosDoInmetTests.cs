@@ -155,6 +155,24 @@ public class FonteDeAvisosEmCacheTests
     }
 
     [Fact]
+    public async Task Sem_lista_guardada_espera_1_minuto_antes_de_tentar_o_INMET_de_novo()
+    {
+        _origem.SetupSequence(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("INMET fora do ar"))
+            .ReturnsAsync(Lista);
+        using var cache = CriarCache();
+
+        await Assert.ThrowsAsync<FonteIndisponivelException>(() => cache.ObterAvisosAsync());
+        _relogio.Advance(TimeSpan.FromSeconds(30));
+        await Assert.ThrowsAsync<FonteIndisponivelException>(() => cache.ObterAvisosAsync()); // nem tenta
+        _origem.Verify(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        _relogio.Advance(TimeSpan.FromSeconds(31));
+        Assert.Same(Lista, await cache.ObterAvisosAsync());
+        _origem.Verify(o => o.ObterAvisosAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
     public void Decorator_quem_pede_a_fonte_de_avisos_recebe_o_cache()
     {
         var servicos = new ServiceCollection()

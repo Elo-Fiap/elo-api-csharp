@@ -196,6 +196,30 @@ public class SensoresERuasApiTests(EloApiFactory fabrica) : IClassFixture<EloApi
     }
 
     [Fact]
+    public async Task Sensor_semeado_traz_o_nivel_de_atencao_e_ele_pode_ser_trocado_ou_removido()
+    {
+        var antes = await (await _cliente.GetAsync("/api/sensores/1")).LerAsync<SensorDto>();
+        Assert.Equal(100, antes.AtencaoCm);
+
+        var troca = await _cliente.PutAsJsonAsync("/api/sensores/1", new { local = antes.Local, limiteAlertaCm = 120, atencaoCm = 90, ativo = true }, EloApiFactory.Json);
+        Assert.Equal(90, (await troca.LerAsync<SensorDto>()).AtencaoCm);
+
+        var remove = await _cliente.PutAsJsonAsync("/api/sensores/1", new { local = antes.Local, limiteAlertaCm = 120, ativo = true }, EloApiFactory.Json);
+        Assert.Null((await remove.LerAsync<SensorDto>()).AtencaoCm);
+    }
+
+    [Theory]
+    [InlineData(120)]
+    [InlineData(130)]
+    [InlineData(0)]
+    public async Task Atencao_a_partir_do_limite_ou_zero_e_recusada(double atencao)
+    {
+        var resposta = await _cliente.PutAsJsonAsync("/api/sensores/1", new { local = "Ponte", limiteAlertaCm = 120, atencaoCm = atencao, ativo = true }, EloApiFactory.Json);
+
+        Assert.True(resposta.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
     public async Task Leitura_negativa_devolve_400()
     {
         var resposta = await _cliente.EnviarAsync("/api/sensores/2/leituras", new { nivelCm = -3 });

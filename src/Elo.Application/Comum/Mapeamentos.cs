@@ -29,7 +29,13 @@ internal static class Mapeamentos
         [.. bairro.Ruas
             .OrderBy(rua => rua.Microarea)
             .ThenBy(rua => rua.Nome)
-            .Select(rua => rua.ParaResumoDto())]);
+            .Select(rua => rua.ParaResumoDto())],
+        bairro.Uf,
+        bairro.CodigoIbge,
+        bairro.Latitude,
+        bairro.Longitude,
+        bairro.PercentualSemApp,
+        bairro.SemAppMedidoEm);
 
     public static RuaResumoDto ParaResumoDto(this Rua rua) => new(
         rua.Id,
@@ -155,6 +161,7 @@ internal static class Mapeamentos
         item.Sensor.Codigo,
         item.Sensor.Local,
         item.Sensor.LimiteAlertaCm,
+        item.Sensor.AtencaoCm,
         item.Sensor.Ativo,
         item.UltimaLeitura?.ParaDto());
 

@@ -63,7 +63,7 @@ public sealed class SensorService(
             throw new ConflitoException($"Já existe um sensor com o código {codigo}.");
         }
 
-        var sensor = new Sensor(ruaId, codigo, request.Local, request.LimiteAlertaCm ?? 0);
+        var sensor = new Sensor(ruaId, codigo, request.Local, request.LimiteAlertaCm ?? 0, request.AtencaoCm);
         sensores.Adicionar(sensor);
         await unitOfWork.SalvarAsync(cancellationToken);
 
@@ -74,7 +74,7 @@ public sealed class SensorService(
     public async Task<SensorDto> AtualizarAsync(int id, AtualizarSensorRequest request, CancellationToken cancellationToken = default)
     {
         var sensor = await ObterSensorAsync(id, cancellationToken);
-        sensor.Atualizar(request.Local, request.LimiteAlertaCm ?? 0, request.Ativo);
+        sensor.Atualizar(request.Local, request.LimiteAlertaCm ?? 0, request.Ativo, request.AtencaoCm);
         await unitOfWork.SalvarAsync(cancellationToken);
         return await ObterAsync(id, cancellationToken);
     }

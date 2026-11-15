@@ -47,6 +47,7 @@ public sealed class FonteDeAvisosEmCache(
             return avisos;
         }
 
+        RecusarSeAcabouDeFalharSemGuardado();
         return await BaixarAsync(somenteSeVelho: true, cancellationToken);
     }
 
@@ -67,10 +68,26 @@ public sealed class FonteDeAvisosEmCache(
 
         var agora = relogio.GetUtcNow();
         var aindaNovo = agora - retrato.BaixadoEm < TimeSpan.FromMinutes(opcoes.Value.IdadeMaximaEmMinutos);
-        var ultimaFalha = Interlocked.Read(ref _ultimaFalhaEmTicks);
-        var esperandoDepoisDeFalha = ultimaFalha != 0 && agora - new DateTimeOffset(ultimaFalha, TimeSpan.Zero) < EsperaDepoisDeFalha;
+        return aindaNovo || EsperandoDepoisDeFalha(agora);
+    }
 
-        return aindaNovo || esperandoDepoisDeFalha;
+    private bool EsperandoDepoisDeFalha(DateTimeOffset agora)
+    {
+        var ultimaFalha = Interlocked.Read(ref _ultimaFalhaEmTicks);
+        return ultimaFalha != 0 && agora - new DateTimeOffset(ultimaFalha, TimeSpan.Zero) < EsperaDepoisDeFalha;
+    }
+
+    /// <summary>
+    /// Sem lista guardada e com falha há menos de 1 minuto, responde na hora em vez de esperar
+    /// o INMET de novo (cada tentativa pode levar até o timeout, e o painel consulta a cada 15 s).
+    /// </summary>
+    private void RecusarSeAcabouDeFalharSemGuardado()
+    {
+        if (Volatile.Read(ref _retrato) is null && EsperandoDepoisDeFalha(relogio.GetUtcNow()))
+        {
+            throw new FonteIndisponivelException(
+                "Os avisos do INMET estão indisponíveis no momento. Tente de novo em alguns minutos.");
+        }
     }
 
     private async Task<IReadOnlyList<AvisoDoInmet>> BaixarAsync(bool somenteSeVelho, CancellationToken cancellationToken)
@@ -82,6 +99,11 @@ public sealed class FonteDeAvisosEmCache(
             if (somenteSeVelho && PodeUsarOGuardado(out var jaAtualizados))
             {
                 return jaAtualizados;
+            }
+
+            if (somenteSeVelho)
+            {
+                RecusarSeAcabouDeFalharSemGuardado();
             }
 
             var avisos = await origem.ObterAvisosAsync(cancellationToken);

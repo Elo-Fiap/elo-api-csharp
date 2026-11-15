@@ -36,6 +36,7 @@ public class EloApiFactory : WebApplicationFactory<Program>
         {
             ["ConnectionStrings:Elo"] = $"Data Source={_arquivoDoBanco}",
             ["Retencao:Habilitada"] = "false",
+            ["DadosDeExemplo:IncluirBairrosDoPainel"] = "false", // os testes atuais esperam só o piloto
             ["Dispositivos:Chave"] = ChaveDeDispositivo,
             ["Avisos:AtualizacaoAutomatica"] = "false"
         }));

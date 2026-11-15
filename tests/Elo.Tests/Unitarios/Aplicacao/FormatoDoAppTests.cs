@@ -52,4 +52,14 @@ public class FormatoDoAppTests
         Assert.Equal(1.42, FormatoDoApp.Metros(142));
         Assert.Equal(1.2, FormatoDoApp.Metros(120));
     }
+
+    [Theory]
+    [InlineData(100.0, 120.0, 1.0)]
+    [InlineData(130.0, 120.0, null)]  // cadastro mudou depois da última leitura
+    [InlineData(119.6, 120.0, null)]  // arredondado, empataria com o limite
+    [InlineData(null, 120.0, null)]
+    public void Atencao_sai_sempre_abaixo_do_limite_da_mesma_resposta(double? atencaoCm, double limiteCm, double? esperado)
+    {
+        Assert.Equal(esperado, FormatoDoApp.AtencaoMetros(atencaoCm, limiteCm));
+    }
 }

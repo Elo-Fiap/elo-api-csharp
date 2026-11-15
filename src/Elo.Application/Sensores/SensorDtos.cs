@@ -24,6 +24,10 @@ public sealed record CriarSensorRequest
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
     [Range(1.0, 500.0, ErrorMessage = Mensagens.Intervalo)]
     public double? LimiteAlertaCm { get; init; }
+
+    /// <summary>Nível de atenção (cm), opcional: maior que 0 e menor que o limite. Ex.: 100 para um limite de 120.</summary>
+    [Range(0.01, 500.0, ErrorMessage = Mensagens.Intervalo)]
+    public double? AtencaoCm { get; init; }
 }
 
 /// <summary>Dados para atualizar um sensor (a rua e o código não mudam).</summary>
@@ -36,6 +40,10 @@ public sealed record AtualizarSensorRequest
     [Required(ErrorMessage = Mensagens.Obrigatorio)]
     [Range(1.0, 500.0, ErrorMessage = Mensagens.Intervalo)]
     public double? LimiteAlertaCm { get; init; }
+
+    /// <summary>Nível de atenção (cm), opcional; vazio remove o nível de atenção.</summary>
+    [Range(0.01, 500.0, ErrorMessage = Mensagens.Intervalo)]
+    public double? AtencaoCm { get; init; }
 
     public bool Ativo { get; init; } = true;
 }
@@ -67,5 +75,6 @@ public sealed record SensorDto(
     string Codigo,
     string Local,
     double LimiteAlertaCm,
+    double? AtencaoCm,
     bool Ativo,
     LeituraDto? UltimaLeitura);

@@ -1,6 +1,7 @@
 using Elo.Application.Abstracoes;
 using Elo.Application.Avisos;
 using Elo.Application.ContratoDoApp;
+using Elo.Application.PainelAdmin;
 using Elo.Infrastructure.Avisos;
 using Microsoft.Extensions.Options;
 using Elo.Application.Retencao;
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IRuaRepository, RuaRepository>();
         services.AddScoped<IChamadaRepository, ChamadaRepository>();
         services.AddScoped<ISensorRepository, SensorRepository>();
+        services.AddScoped<IPainelAdminRepository, PainelAdminRepository>();
 
         services.AddOptions<RetencaoOptions>()
             .BindConfiguration(RetencaoOptions.Secao)
