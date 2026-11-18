@@ -201,3 +201,24 @@ Content-Type: application/json
   "atencaoCm": 100,
   "ativo": true
 }
+
+### Cybersecurity: painel Risco Cidadão (farol, índice de 0 a 100 e a mensagem ao cidadão). A página fica em /risco-cidadao.html
+GET {{Elo}}/api/seguranca/painel
+
+### Cybersecurity: eventos de segurança mais recentes (limite de 1 a 500; só metadados, nunca o dado pessoal)
+GET {{Elo}}/api/seguranca/eventos?limite=20
+
+### Cybersecurity: resposta com dado pessoal na observação e chaves extras (CPF, RG, senha e doença).
+### Ela é aceita, mas o CPF, o RG, a senha e a doença saem mascarados no banco, no log e na resposta; depois veja o painel.
+POST {{Elo}}/api/chamadas/2/respostas
+Content-Type: application/json
+
+{
+  "idLocal": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "ruaId": 6,
+  "situacao": "PrecisoDeAjuda",
+  "pessoas": 1,
+  "observacao": "Sra. Maria Souza, CPF 123.456.789-00, RG 12.345.678-9, senha: abc12345. Ela é diabética.",
+  "documento": "123.456.789-00",
+  "senha": "abc12345"
+}

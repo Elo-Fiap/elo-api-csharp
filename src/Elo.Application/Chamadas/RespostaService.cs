@@ -52,13 +52,22 @@ public sealed class RespostaService(
 
         await unitOfWork.SalvarAsync(cancellationToken);
 
-        // A observação não vai para o log: ela pode ter dado sensível.
+        // O log de informação não leva a observação: ela pode ter dado sensível.
         logger.LogInformation(
             "Resposta {Situacao} da rua {RuaId} na chamada {ChamadaId} (canal {Canal}).",
             resposta.Situacao,
             rua.Id,
             chamadaId,
             resposta.Canal);
+
+        // O pedido de ajuda é o que a equipe de operação precisa ler no log, com a observação como veio na requisição.
+        // Quem protege é a guarda de log do módulo de segurança (mascara CPF, saúde, senha...), não este código.
+        if (resposta.Situacao == SituacaoRua.PrecisoDeAjuda)
+        {
+            logger.LogWarning(
+                "Pedido de ajuda na rua {RuaId} (chamada {ChamadaId}): {Observacao}",
+                rua.Id, chamadaId, request.Observacao ?? "(sem observação)");
+        }
 
         return new ResultadoDeRegistro<RespostaDto>(resposta.ParaDto(), Criado: true);
     }

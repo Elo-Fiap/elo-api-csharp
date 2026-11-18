@@ -7,6 +7,8 @@ using Microsoft.Extensions.Options;
 using Elo.Application.Retencao;
 using Elo.Infrastructure.Persistencia;
 using Elo.Infrastructure.Repositorios;
+using Elo.Infrastructure.Seguranca;
+using Elo.Seguranca;
 using Elo.Infrastructure.Servicos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +25,10 @@ public static class DependencyInjection
 
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
+        // Módulo de Cybersecurity: o interceptor abaixo é o sink "Banco" (mascara o que for gravado).
+        services.AddModuloDeSeguranca();
+        services.AddSingleton<InterceptadorDeGravacaoProtegida>();
+
         // A conexão é lida quando o DbContext é criado (e não no Program.cs);
         // assim os testes conseguem apontar para outro arquivo de banco pela configuração.
         services.AddDbContext<EloDbContext>((provedor, opcoes) =>
@@ -31,6 +37,7 @@ public static class DependencyInjection
             var ambiente = provedor.GetRequiredService<IHostEnvironment>();
             var conexao = MontarConexao(configuracao.GetConnectionString(NomeDaConexao), ambiente.ContentRootPath);
             opcoes.UseSqlite(conexao);
+            opcoes.AddInterceptors(provedor.GetRequiredService<InterceptadorDeGravacaoProtegida>());
         });
 
         // O próprio DbContext faz o papel de unidade de trabalho.
@@ -56,6 +63,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         AdicionarAvisosDoInmet(services);
+        AdicionarTraducaoDeEventosDeSeguranca(services);
 
         return services;
     }
@@ -82,6 +90,36 @@ public static class DependencyInjection
         services.AddSingleton<IFonteDeAvisos>(provedor => provedor.GetRequiredService<FonteDeAvisosEmCache>());
         services.AddSingleton<ICacheDeAvisos>(provedor => provedor.GetRequiredService<FonteDeAvisosEmCache>());
         services.AddHostedService<AtualizadorDeAvisosWorker>();
+    }
+
+    /// <summary>
+    /// Tradução das falhas de segurança para o cidadão: Claude ou Gemini (o de <c>Ia:Provedor</c>, se tiver chave),
+    /// com a mensagem pronta como reserva. O header da chave não vai para o log do HttpClient.
+    /// </summary>
+    private static void AdicionarTraducaoDeEventosDeSeguranca(IServiceCollection services)
+    {
+        services.AddOptions<IaOptions>()
+            .BindConfiguration(IaOptions.Secao)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient(TradutorGemini.NomeDoCliente, http =>
+            {
+                http.BaseAddress = new Uri(TradutorGemini.EnderecoBase);
+                http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            })
+            .RedactLoggedHeaders(cabecalho => string.Equals(cabecalho, TradutorGemini.NomeDoHeaderDaChave, StringComparison.OrdinalIgnoreCase));
+
+        services.AddHttpClient(TradutorClaude.NomeDoCliente)
+            .RedactLoggedHeaders(cabecalho => string.Equals(cabecalho, TradutorClaude.NomeDoHeaderDaChave, StringComparison.OrdinalIgnoreCase));
+
+        services.AddSingleton<TradutorGemini>();
+        services.AddSingleton<TradutorClaude>();
+        services.AddSingleton<IProvedorDeIa>(provedor =>
+            provedor.GetRequiredService<IOptions<IaOptions>>().Value.Provedor == ProvedorDoLlm.Gemini
+                ? provedor.GetRequiredService<TradutorGemini>()
+                : provedor.GetRequiredService<TradutorClaude>());
+        services.AddHostedService<TradutorDeEventosWorker>();
     }
 
     /// <summary>Um caminho relativo do SQLite (ex.: "elo.db") vira absoluto a partir da pasta da API.</summary>

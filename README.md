@@ -33,6 +33,7 @@
 - [Ligar o app e a régua (ESP32)](#ligar-o-app-e-a-régua-esp32)
 - [Endpoints](#endpoints)
 - [Painel de administração](#painel-de-administração)
+- [Módulo de Cybersecurity (CitizenTech)](#módulo-de-cybersecurity-citizentech)
 - [Arquitetura](#arquitetura)
 - [Onde cada critério da avaliação aparece](#onde-cada-critério-da-avaliação-aparece)
 - [Regras de negócio](#regras-de-negócio)
@@ -87,6 +88,7 @@ Na primeira execução a API aplica as migrations, cria o arquivo `src/Elo.Api/e
 | http://localhost:5080/scalar | A mesma documentação no **Scalar** |
 | http://localhost:5080/openapi/v1.json | Documento OpenAPI 3.1 |
 | http://localhost:5080/ | Resumo do bairro com a cara do Elo: chamada aberta, ruas por prioridade e a última leitura da régua |
+| http://localhost:5080/risco-cidadao.html | Painel **Risco Cidadão** (Cybersecurity): farol, índice de risco e as falhas traduzidas para o cidadão |
 | http://localhost:5080/health | Saúde da API e do banco |
 
 A mesma API está publicada na internet em **http://elo-api-fiap.azurewebsites.net**, com as mesmas rotas (veja "Endereço público da entrega" abaixo).
@@ -224,6 +226,8 @@ Nos dados simulados: bairro `1`, treino antigo = chamada `1`, chamada real abert
 | GET / PUT / DELETE | `/api/sensores/{id}` | Detalha, atualiza ou exclui uma régua |
 | GET / POST | `/api/sensores/{id}/leituras` | Lista as últimas leituras ou registra uma leitura (em cm) |
 | GET | `/api/sensores/{id}/leituras/{leituraId}` | Detalha uma leitura (é para cá que aponta o `Location` do 201) |
+| GET | `/api/seguranca/painel` | **Risco Cidadão**: farol, índice de 0 a 100 e a mensagem ao cidadão (veja [Módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech)) |
+| GET | `/api/seguranca/eventos` | Eventos de segurança mais recentes (`limite` de 1 a 500), só metadados |
 
 Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md). O painel de administração usa uma rota própria, `GET /api/admin/instantaneo` (veja [Painel de administração](#painel-de-administração)).
 
@@ -256,6 +260,67 @@ dotnet run --project src/Elo.Api
 **Créditos.** Os traçados das 8 ruas do piloto são reais, do **OpenStreetMap** (© colaboradores do OpenStreetMap, licença
 [ODbL](https://www.openstreetmap.org/copyright)), usados com os nomes fictícios da API. Os dados de bairros, ruas, réguas e chamadas são todos simulados.
 
+## Módulo de Cybersecurity (CitizenTech)
+
+Um acréscimo à API, no projeto [`src/Elo.Seguranca`](src/Elo.Seguranca): nenhum contrato do app nem do painel mudou.
+Ele protege o que as pessoas digitam sem querer na observação (CPF, RG, senha, doença, nome) em quatro passos:
+
+1. **Parsing de PII.** Um middleware lê o JSON de entrada (POST, PUT e PATCH, e também a query string) e acha CPF, RG, cartão do SUS, e-mail, telefone, senha, dado de saúde e nome
+   com regex e validação do dígito verificador. Reconhece também pelo nome da chave: um `"documento"` ou uma `"senha"` que a API nem conhece é marcado.
+   O que é achado vira **máscara** antes de ir para o banco ou para o log (`123.456.789-00` vira `***.456.***-00`).
+2. **Taint analysis.** O dado marcado na entrada é seguido até as saídas (banco, log, resposta HTTP e LLM). Uma camada, a `GuardaDeSaida`, fica antes de cada saída e troca o valor marcado pela máscara,
+   mesmo quando ele não tem cara de dado sensível. Também varre o que já estava no banco: dado antigo, gravado por fora da API, sai mascarado na resposta.
+   Cada bloqueio vira um **evento de segurança** (só tipo, quantidade e lugar, nunca o dado).
+3. **Tradução por IA.** Em segundo plano, cada evento ganha uma mensagem de duas frases para um cidadão leigo de 60 anos. O Claude (Anthropic) escreve a mensagem a partir de um prompt que só tem metadados
+   (e que também passa pela guarda). Sem chave, desligado, com erro, recusa ou timeout, entram as mensagens prontas do `TradutorPadrao`. **Aviso de chuva nunca passa por LLM.**
+4. **Painel Risco Cidadão.** Uma página com farol verde, amarelo ou vermelho (sempre com texto, não só cor), índice de 0 a 100, a frase ao cidadão e, lado a lado, a falha técnica e o que o cidadão lê.
+
+**Farol e índice.** Verde: nenhum evento nas últimas 24 horas. Amarelo: só chegou dado sensível (foi marcado, nada tentou sair). Vermelho: pelo menos uma saída foi bloqueada.
+O índice é a soma dos pontos de cada evento vezes 4, no máximo 100. Pontos = peso da severidade (média 2, alta 3; telefone e e-mail são médios, o resto é alto) x peso da etapa (entrada 1, saída 3).
+
+**Painel.** Com a API no ar, abra http://localhost:5080/risco-cidadao.html (atualiza a cada 3 segundos). Os mesmos dados saem em `GET /api/seguranca/painel` e `GET /api/seguranca/eventos`,
+documentados no Swagger e no Scalar. A página segue o visual do app e do painel de administração: as mesmas cores, as fontes Manrope e Space Grotesk (servidas pela própria API,
+em `wwwroot/fontes`, sem CDN), seções sem caixa e a situação sempre escrita. Tem tema claro e escuro (segue o aparelho, com botão para trocar; `?tema=claro` ou `?tema=escuro` na URL força um deles).
+
+**Demonstração.** O roteiro para gravar o vídeo está em [`docs/cyber/demo.sh`](docs/cyber/demo.sh): com a API no ar, rode `docs/cyber/demo.sh` em outro terminal.
+Ele envia um "Preciso de ajuda" com CPF, RG, senha, doença e nome; um JSON com as chaves `documento` e `senha` (que a API nem conhece); e um dado antigo gravado direto no banco.
+Entre os passos, mostra o painel. A saída de uma execução real, com o Claude ligado, está em [`docs/evidencias/cyber-demo.txt`](docs/evidencias/cyber-demo.txt).
+Na mesma execução, o log da API saiu assim (a observação original tinha "Sra. Maria Souza, CPF 123.456.789-00, RG 12.345.678-9, senha: abc12345. Ela é diabética"):
+
+```text
+warn: Elo.Application.ContratoDoApp.ContratoDoAppService[0]
+      Pedido de ajuda na rua 6 (chamada 2): Sra. [nome oculto], CPF ***.456.***-00, RG [RG oculto], senha: [senha oculta]. Ela é [dado de saúde oculto] e está sozinha.
+```
+
+Os CPFs e RGs da demonstração são inventados.
+
+**Como ligar o Claude.** O tradutor usa o SDK oficial da Anthropic para C# (pacote `Anthropic`), com o modelo `claude-opus-5-5`, esforço baixo (são duas frases)
+e o fallback do servidor ligado (se o modelo recusar, outro modelo responde na mesma chamada). A chave é da API da Anthropic (criada em platform.claude.com, cobrada por uso,
+separada da assinatura do Claude) e **não fica no repositório**: a seção `Ia` do `appsettings.json` vem com `ChaveApi` vazia. Use uma das duas formas:
+
+```bash
+dotnet user-secrets set "Ia:Claude:ChaveApi" "<sua-chave>" --project src/Elo.Api
+```
+
+```bash
+Ia__Claude__ChaveApi=<sua-chave> dotnet run --project src/Elo.Api
+```
+
+Sem chave, a API usa as mensagens prontas e o painel funciona igual. Outras opções: `Ia:Claude:Modelo` (padrão `claude-opus-5-5`; `claude-haiku-5-5` sai bem mais barato),
+`Ia:TempoLimiteEmSegundos` (padrão 20) e `Ia:Habilitada` (`false` desliga o LLM; os testes usam assim, então nenhum teste acessa a rede).
+Cada falha igual (mesma etapa, saída e tipos) chama o LLM uma vez só: a tradução fica guardada em memória.
+
+**Gemini como alternativa.** Com `Ia:Provedor` = `Gemini` e a chave em `Ia:Gemini:ChaveApi` (modelo em `Ia:Gemini:Modelo`, padrão `gemini-2.5-flash`), o Gemini faz o mesmo papel.
+Os dois implementam a interface `IProvedorDeIa`, então o worker não muda.
+
+**Limites conhecidos.**
+
+- Os eventos ficam **em memória** (os últimos 500) e somem quando a API reinicia: o painel volta a verde. Foi de propósito, para não criar tabela nem migration.
+- O **contato da liderança é isento de propósito**: `whatsapp`, `linkWhatsapp` e `apelido` são informados para a coordenação poder chamar. É um risco aceito. Telefone e e-mail também não são barrados nas respostas HTTP, a não ser que tenham chegado marcados na mesma requisição (avisos do INMET e contatos institucionais têm telefone).
+- Os **escopos de log não passam pela guarda** (`BeginScope`): só a mensagem e a exceção são limpas.
+- A API não tem login, então **toda resposta é tratada como não autenticada**.
+- O motor reconhece uns 40 termos de saúde e nomes só em frases como "meu nome é" e "Sra."; texto livre fora desses padrões pode escapar. Não é um DLP completo.
+
 ## Arquitetura
 
 Arquitetura em camadas: cada projeto só conhece o de dentro, e a Aplicação depende de **interfaces**, nunca do EF Core.
@@ -280,10 +345,12 @@ elo-api-csharp/
 ├── src/
 │   ├── Elo.Domain/          Bairros, Ruas, Chamadas, Sensores, Painel, Comum
 │   ├── Elo.Application/     Abstracoes (interfaces), ContratoDoApp, Avisos, serviços e DTOs por assunto
-│   ├── Elo.Infrastructure/  Persistencia (DbContext, Configuracoes, Migrations), Repositorios, Avisos (INMET), Servicos
-│   └── Elo.Api/             Controllers, Configuracao, wwwroot, Elo.Api.http
-├── tests/Elo.Tests/         Unitarios/Dominio, Unitarios/Aplicacao, Integracao
-└── docs/                    contrato-api.md e evidencias/
+│   ├── Elo.Infrastructure/  Persistencia (DbContext, Configuracoes, Migrations), Repositorios, Avisos (INMET), Servicos,
+│   │                        Seguranca (tradutores Claude e Gemini, worker, interceptor do EF Core)
+│   ├── Elo.Seguranca/       Pii, Taint, Eventos, Traducao, Risco (módulo de Cybersecurity, sem ASP.NET)
+│   └── Elo.Api/             Controllers, Configuracao, Seguranca (middlewares e log protegido), wwwroot (páginas e fontes), Elo.Api.http
+├── tests/Elo.Tests/         Unitarios/Dominio, Unitarios/Aplicacao, Unitarios/Seguranca, Integracao
+└── docs/                    contrato-api.md, cyber/demo.sh e evidencias/
 ```
 
 **Contrato do app como camada anticorrupção.** O app fala outra língua: para ele, "chamada" é o que a liderança responde,
@@ -388,13 +455,16 @@ classDiagram
 ### Qualidade do código (2,0)
 
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
-- Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação nunca vai para o log).
+- Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação só chega ao log mascarada pela guarda do [módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech)).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **248 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet (os 154 abaixo mais 94 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo, as rotas com os dados do piloto e com os 12 bairros, e a espera do cache do INMET depois de falha):
+- **476 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet: 248 da API e 228 do [módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech). Os 248 da API são os 154 abaixo mais 94 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo, as rotas com os dados do piloto e com os 12 bairros, e a espera do cache do INMET depois de falha:
   - 54 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento, value objects);
   - 36 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`), a tradução para o formato do app e o filtro de avisos;
   - 19 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app), o cache e a ligação do Decorator na injeção de dependência;
   - 45 de integração com a API inteira (`WebApplicationFactory`) e um banco SQLite temporário por classe, incluindo as rotas do contrato, a chave do ESP32, o `/avisos` com um INMET falso e o `Location` de cada 201.
+  - 228 do módulo de Cybersecurity: o motor de PII (cada tipo, positivo e negativo, e os falsos positivos como "Rua Dona Ana" e GUID), a guarda de saída, o registro de eventos,
+    o cálculo do farol e do índice, as mensagens prontas, os tradutores do Claude e do Gemini com um servidor falso (sem rede) e 14 de integração: o dado sensível não chega ao banco,
+    ao log nem à resposta, o dado antigo sai mascarado, os contratos do app e do painel não mudam e o painel fica verde, amarelo e vermelho.
 
 ## Regras de negócio
 
@@ -423,6 +493,7 @@ classDiagram
 
 - [`docs/evidencias/fluxo-completo.md`](docs/evidencias/fluxo-completo.md): 27 requisições reais feitas contra a API rodando, em quatro partes: a API completa (painel antes e depois, reenvio offline, erros 400/404/409/422), as **rotas do contrato do app e do ESP32** (`/situacao`, `/chamadas`, `/leituras` com 401 sem chave e 204 com chave, `/regua`, `/ruas/{id}/plano`), o fim da chamada com o indicador e os **avisos reais do INMET** (148.353 bytes do INMET viraram 2.333 bytes para o município).
 - [`docs/evidencias/resultado-dos-testes.txt`](docs/evidencias/resultado-dos-testes.txt): os 154 testes aprovados.
+- [`docs/evidencias/cyber-demo.txt`](docs/evidencias/cyber-demo.txt): a saída do roteiro de demonstração do módulo de Cybersecurity, com as mensagens escritas pelo Claude.
 
 **Página do resumo do bairro** (http://elo-api-fiap.azurewebsites.net): a chamada aberta, os números da chamada, as ruas em ordem de prioridade e a régua do bairro com o limite e o nível de atenção, com as fontes, as cores e o logo do app e do painel:
 
@@ -436,6 +507,14 @@ classDiagram
 
 ![Scalar](docs/evidencias/03-scalar.png)
 
+**Painel Risco Cidadão** (módulo de Cybersecurity), depois da demonstração com o Claude ligado: farol vermelho, índice 100 e, em cada evento, a falha técnica ao lado do que o cidadão lê:
+
+![Risco Cidadão](docs/evidencias/04-risco-cidadao.png)
+
+No celular, no tema escuro:
+
+<img src="docs/evidencias/05-risco-cidadao-celular.png" alt="Risco Cidadão no celular, tema escuro" width="320">
+
 ## Decisões e limitações
 
 - **SQLite** para quem avaliar rodar sem instalar banco. Trocar para Oracle ou SQL Server muda só o provedor no `AddInfrastructure` e as migrations.
@@ -447,7 +526,7 @@ classDiagram
 - Sem chamada aberta, `POST /chamadas` devolve 422 e o app deixa a resposta pendente para tentar de novo. Abrir a chamada é papel do coordenador (`/api/bairros/{id}/chamadas`).
 - **Os PUT trocam o registro inteiro.** Em `PUT /api/bairros/{id}`, deixar de fora `uf`, `codigoIbge`, as coordenadas ou o `percentualSemApp` apaga esses campos; em `PUT /api/sensores/{id}`, deixar de fora `atencaoCm` apaga o nível de atenção. Quem edita manda o registro todo, como ele veio no GET.
 - **Posição de rua e de régua só pela semente.** Não há rota para gravar a coordenada ou o traçado da rua, nem a posição da régua. Um `elo.db` criado antes da migração `PainelAdmin` fica sem mapa até ser recriado (apagar o arquivo recria tudo com os dados de exemplo, e as leituras reais se perdem).
-- O mascaramento acha CPF, telefone e e-mail; nomes e doenças ficam com o módulo de Cybersecurity da CitizenTech.
+- O mascaramento do domínio (`FiltroDeDadosPessoais`) acha CPF, telefone e e-mail na observação. Nomes, doenças, RG, cartão do SUS e senhas são tratados pelo [módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech), que também mascara o log, o banco e as respostas.
 
 ## Uso de IA
 

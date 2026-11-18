@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Elo, Risco Cidadão</title>
+  <meta name="description" content="Painel do coordenador: o que o Elo fez nas últimas 24 horas para proteger as informações pessoais que as pessoas digitam.">
+  <!-- Tema antes de desenhar a página: sem piscar no tema errado. Mesma regra do painel admin. -->
+  <script>
+    (function () {
+      var t = new URLSearchParams(location.search).get("tema");
+      if (!t) { try { t = localStorage.getItem("elo-tema"); } catch (e) {} }
+      if (t === "escuro" || t === "claro") document.documentElement.dataset.theme = t === "escuro" ? "dark" : "light";
+    })();
+  </script>
+  <style>
+    /* Fontes do Elo (as mesmas do app e do painel admin), servidas pela própria API: nada de CDN. Licença SIL OFL. */
+    @font-face { font-family: "Manrope"; src: url("/fontes/manrope.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+    @font-face { font-family: "Space Grotesk"; src: url("/fontes/space-grotesk.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+
+    /* Tokens copiados do painel admin (globals.css). Claro é o padrão; escuro pelo sistema ou pelo botão. */
+    :root {
+      --fundo: #f6f6f3;
+      --tinta: #141414;
+      --solido: #141414;
+      --sobre-solido: #f6f6f3;
+      --apoio: #5b5b56;
+      --linha: rgba(0, 0, 0, 0.1);
+      --realce: rgba(0, 0, 0, 0.05);
+      --ajuda: #c8321e;
+      --agua: #2a67d1;
+      --silencio: #7a5200;
+      --verde: #1f7a4a; /* só o farol usa: o resto do Elo não precisa de verde */
+      color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --fundo: #0e0e0e;
+      --tinta: #f8f8f8;
+      --solido: #f8f8f8;
+      --sobre-solido: #0e0e0e;
+      --apoio: #b4b4b4;
+      --linha: rgba(255, 255, 255, 0.1);
+      --realce: rgba(255, 255, 255, 0.07);
+      --ajuda: #f2674f;
+      --agua: #6fa0f5;
+      --silencio: #ffe657;
+      --verde: #62d394;
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme]) {
+        --fundo: #0e0e0e;
+        --tinta: #f8f8f8;
+        --solido: #f8f8f8;
+        --sobre-solido: #0e0e0e;
+        --apoio: #b4b4b4;
+        --linha: rgba(255, 255, 255, 0.1);
+        --realce: rgba(255, 255, 255, 0.07);
+        --ajuda: #f2674f;
+        --agua: #6fa0f5;
+        --silencio: #ffe657;
+        --verde: #62d394;
+        color-scheme: dark;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--fundo); }
+    body {
+      margin: 0;
+      background: var(--fundo);
+      color: var(--tinta);
+      font-family: "Manrope", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+      font-variant-numeric: tabular-nums;
+    }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; border-radius: 6px; }
+    .visualmente-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .display { font-family: "Space Grotesk", system-ui, sans-serif; }
+    svg.icone { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- Barra do topo (igual à do admin: logo, estado dos dados e tema) ---------- */
+    .topo {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; gap: 12px;
+      min-height: 56px; padding: 4px 16px;
+      background: var(--fundo); border-bottom: 1px solid var(--linha);
+    }
+    .marca { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+    .marca b { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+    .marca b span { color: var(--silencio); }
+    .trilha { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--apoio); font-size: 13px; }
+    .trilha::before { content: ""; width: 1px; height: 18px; background: var(--linha); }
+    .trilha a { text-decoration: none; }
+    .trilha a:hover { color: var(--tinta); }
+    .trilha strong { color: var(--tinta); font-weight: 600; white-space: nowrap; }
+    .topo-direita { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .ao-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--apoio); white-space: nowrap; }
+    .ao-vivo i { width: 7px; height: 7px; border-radius: 50%; background: var(--verde); animation: pulso 2.4s ease-in-out infinite; }
+    .ao-vivo.parado i { background: var(--ajuda); animation: none; }
+    @keyframes pulso { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .botao {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 32px; min-width: 32px; padding: 0 10px;
+      border: 1px solid var(--linha); border-radius: 8px;
+      background: transparent; color: var(--tinta);
+      font: 600 12px/1 "Manrope", system-ui, sans-serif; text-decoration: none; cursor: pointer;
+    }
+    .botao:hover { background: var(--realce); }
+    .botao.so-icone { padding: 0; }
+
+    /* ---------- Página ---------- */
+    main { display: flex; flex-direction: column; gap: 24px; max-width: 1240px; padding: 24px 16px 40px; }
+    .cabecalho h1 { margin: 0; font-family: "Space Grotesk", system-ui, sans-serif; font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; }
+    .cabecalho p { margin: 8px 0 0; max-width: 62ch; color: var(--apoio); }
+
+    .erro {
+      display: flex; gap: 8px; align-items: flex-start;
+      padding: 10px 0; border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha);
+      color: var(--ajuda); font-weight: 600;
+    }
+    .erro[hidden] { display: none; }
+    .erro p { margin: 0; }
+    .erro span { display: block; color: var(--apoio); font-weight: 500; }
+
+    /* Seção: rótulo em maiúsculas, linha fina em cima, sem caixa (Secao.tsx do admin). */
+    .secao { border-top: 1px solid var(--linha); padding-top: 16px; min-width: 0; scroll-margin-top: 64px; /* não some atrás da barra do topo */ }
+    .secao > header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 12px; }
+    .secao h2 {
+      margin: 0; font-family: "Space Grotesk", system-ui, sans-serif;
+      font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--apoio);
+    }
+    .secao header p { margin: 0; font-size: 12px; color: var(--apoio); }
+    /* Faixa com colunas lado a lado: linha em cima da faixa toda e linha vertical entre as colunas (Colunas do admin). */
+    .colunas { display: grid; grid-template-columns: 1fr; gap: 24px; }
+
+    /* ---------- Situação agora ---------- */
+    .situacao { --cor: var(--verde); }
+    .situacao[data-farol="amarelo"] { --cor: var(--silencio); }
+    .situacao[data-farol="vermelho"] { --cor: var(--ajuda); }
+    .farol-linha { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .lampadas { display: inline-flex; gap: 6px; padding: 6px 8px; border: 1px solid var(--linha); border-radius: 999px; }
+    .lampadas i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--linha); }
+    .lampadas i.acesa[data-cor="verde"] { background: var(--verde); border-color: var(--verde); }
+    .lampadas i.acesa[data-cor="amarelo"] { background: var(--silencio); border-color: var(--silencio); }
+    .lampadas i.acesa[data-cor="vermelho"] { background: var(--ajuda); border-color: var(--ajuda); }
+    .farol-nome { display: inline-flex; align-items: center; gap: 8px; font-family: "Space Grotesk", system-ui, sans-serif; font-size: 40px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; color: var(--cor); }
+    .farol-legenda { color: var(--tinta); font-size: 15px; font-weight: 600; }
+    .frase {
+      margin: 20px 0 0; max-width: 40ch;
+      padding-left: 16px; border-left: 2px solid var(--cor);
+      font-size: 21px; font-weight: 500; line-height: 1.4; letter-spacing: -0.005em; text-wrap: pretty;
+    }
+    .autoria { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0 18px; font-size: 12px; color: var(--apoio); }
+    .autoria svg.icone { width: 13px; height: 13px; }
+
+    .indice-numero { display: flex; align-items: baseline; gap: 8px; }
+    .indice-numero b { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 72px; font-weight: 600; line-height: 0.9; letter-spacing: -0.03em; }
+    .indice-numero span { color: var(--apoio); font-size: 15px; }
+    .trilho-indice { margin-top: 16px; height: 24px; background: var(--realce); display: flex; align-items: center; }
+    .trilho-indice span { display: block; height: 20px; width: var(--indice, 0%); background: var(--cor); border-radius: 0 4px 4px 0; }
+    /* A barra só anima nas atualizações, não no primeiro desenho (que já entra no valor certo). */
+    .pronto .trilho-indice span { transition: width 0.4s ease; }
+    .escala { display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px; color: var(--apoio); }
+    .indice-nota { margin: 12px 0 0; font-size: 13px; color: var(--apoio); max-width: 44ch; }
+
+    /* ---------- Caminho do dado ---------- */
+    .caminho { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+    .caminho li { padding: 12px 12px 12px 0; border-top: 1px solid var(--linha); min-width: 0; }
+    .caminho li:nth-child(-n+2) { border-top: 0; }
+    .caminho .nome { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
+    .caminho .nome svg.icone { color: var(--apoio); width: 15px; height: 15px; }
+    .caminho b { display: block; margin: 6px 0 2px; font-family: "Space Grotesk", system-ui, sans-serif; font-size: 34px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+    .caminho .estado { font-size: 12px; font-weight: 600; color: var(--apoio); }
+    .caminho li.ativo .estado { color: var(--ajuda); }
+    .caminho li.ativo.entrada .estado { color: var(--silencio); }
+    .caminho li:not(.ativo) b { color: var(--apoio); }
+    .caminho .detalhe { display: block; margin-top: 2px; font-size: 12px; color: var(--apoio); }
+
+    /* ---------- Tipos e regras ---------- */
+    .barras { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .barras li { display: grid; grid-template-columns: 96px 1fr 40px; align-items: center; gap: 12px; }
+    .barras .rotulo { font-size: 13px; font-weight: 600; }
+    .barras .trilho { height: 24px; background: var(--realce); display: flex; align-items: center; }
+    .barras .trilho span { display: block; height: 20px; background: var(--apoio); border-radius: 0 4px 4px 0; }
+    .barras .valor { text-align: right; font-family: "Space Grotesk", system-ui, sans-serif; font-size: 20px; font-weight: 600; line-height: 1; }
+    .vazio { margin: 0; color: var(--apoio); }
+
+    .dados { margin: 0; display: flex; flex-direction: column; }
+    .dados > div { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--linha); }
+    .dados > div:first-child { border-top: 0; padding-top: 0; }
+    .dados dt { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .dados dt i { width: 10px; height: 10px; border-radius: 50%; }
+    .dados dd { margin: 0; font-size: 13px; color: var(--apoio); }
+
+    /* ---------- Eventos ---------- */
+    .eventos { list-style: none; margin: 0; padding: 0; }
+    .evento { display: grid; grid-template-columns: 1fr; gap: 8px 24px; padding: 16px 0; border-top: 1px solid var(--linha); }
+    .evento:first-child { border-top: 0; padding-top: 4px; }
+    .quando { display: flex; align-items: baseline; gap: 8px; }
+    .quando span { white-space: nowrap; }
+    .quando b { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 15px; font-weight: 600; }
+    .quando span { font-size: 12px; color: var(--apoio); }
+    .ocorrido { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; }
+    .ocorrido .situacao-tag { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; color: var(--ajuda); }
+    .ocorrido .situacao-tag.entrada { color: var(--silencio); }
+    .ocorrido .situacao-tag svg.icone { width: 13px; height: 13px; stroke-width: 2.2; }
+    .ocorrido .tipos { color: var(--tinta); font-weight: 500; }
+    .ocorrido .gravidade { color: var(--apoio); }
+    .lado-a-lado { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 4px; }
+    .lado-a-lado h3 { margin: 0 0 4px; font-family: "Space Grotesk", system-ui, sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--apoio); }
+    .tecnica p { margin: 0; font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--apoio); overflow-wrap: anywhere; }
+    .leigo p { margin: 0; font-size: 15px; line-height: 1.45; text-wrap: pretty; }
+    .leigo .autoria { margin: 6px 0 0; font-size: 12px; }
+    .pendente { color: var(--apoio); font-style: italic; }
+
+    .rodape { border-top: 1px solid var(--linha); padding-top: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; font-size: 12px; color: var(--apoio); }
+    .rodape p { margin: 0; max-width: 70ch; }
+    .rodape nav { display: flex; gap: 16px; }
+    .rodape a:hover { color: var(--tinta); }
+
+    /* ---------- Telas maiores ---------- */
+    @media (min-width: 768px) {
+      .topo { padding: 8px 24px; }
+      main { padding: 24px 24px 40px; }
+      .cabecalho h1 { font-size: 30px; }
+      .caminho { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .caminho li { border-top: 0; border-left: 1px solid var(--linha); padding: 4px 16px 4px; }
+      .caminho li:first-child { border-left: 0; padding-left: 0; }
+      /* Entrada e saídas: a linha depois da entrada é mais forte. */
+      .caminho li:nth-child(2) { border-left: 2px solid var(--linha); }
+      .evento { grid-template-columns: 112px 1fr; }
+      .quando { flex-direction: column; gap: 2px; }
+      .lado-a-lado { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 24px; }
+    }
+    @media (min-width: 1024px) {
+      .topo { padding: 8px 32px; }
+      main { padding: 24px 32px 48px; }
+      /* A faixa de colunas vira uma linha só, com linha vertical entre elas. */
+      .colunas { grid-template-columns: 7fr 5fr; gap: 0; border-top: 1px solid var(--linha); }
+      .colunas > .secao { border-top: 0; padding: 16px 32px 0; border-left: 1px solid var(--linha); }
+      .colunas > .secao:first-child { border-left: 0; padding-left: 0; }
+      .colunas > .secao:last-child { padding-right: 0; }
+      .colunas.metade { grid-template-columns: 1fr 1fr; }
+      .farol-nome { font-size: 48px; }
+      .frase { font-size: 24px; }
+      .indice-numero b { font-size: 88px; }
+    }
+    @media (max-width: 520px) {
+      .trilha a, .trilha .barra { display: none; }
+      .ao-vivo .texto-longo { display: none; }
+      .botao { height: 44px; min-width: 44px; }
+      .barras li { grid-template-columns: 76px 1fr 32px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Ícones (traço de 2 px, como os do lucide usados no app e no admin). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-lua" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-alerta" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+    <symbol id="i-entrada" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5M15 12H3"/></symbol>
+    <symbol id="i-banco" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+    <symbol id="i-registro" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8"/></symbol>
+    <symbol id="i-resposta" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-ia" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></symbol>
+  </svg>
+  <!-- Molde de ícone: o JavaScript clona e aponta para um dos símbolos acima. -->
+  <template id="molde-icone"><svg class="icone" aria-hidden="true"><use href="#i-ok"/></svg></template>
+
+  <header class="topo">
+    <a class="marca" href="/" aria-label="Elo, resumo do bairro">
+      <svg width="33" height="20" viewBox="1 8 36 22" fill="none" aria-hidden="true">
+        <rect x="3" y="10" width="21" height="18" rx="9" stroke="var(--tinta)" stroke-width="4"/>
+        <rect x="14" y="10" width="21" height="18" rx="9" stroke="var(--silencio)" stroke-width="4"/>
+      </svg>
+      <b>Elo<span>.</span></b>
+    </a>
+    <nav class="trilha" aria-label="Você está em">
+      <a href="/">Resumo do bairro</a><span class="barra" aria-hidden="true">/</span><strong>Risco Cidadão</strong>
+    </nav>
+    <div class="topo-direita">
+      <span class="ao-vivo" id="ao-vivo"><i aria-hidden="true"></i><span id="atualizado">Conectando<span class="texto-longo"> à API</span></span></span>
+      <button class="botao so-icone" type="button" id="tema" aria-label="Mudar para tema escuro" title="Tema escuro">
+        <svg class="icone"><use href="#i-lua"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="conteudo" aria-busy="true">
+    <div class="cabecalho">
+      <h1>Risco Cidadão</h1>
+      <p>O que o Elo fez nas últimas 24 horas para proteger o que as pessoas digitam no app: CPF, RG, senha e informação de saúde. Nenhum dado pessoal aparece aqui, só o tipo da informação e onde ela foi barrada.</p>
+    </div>
+
+    <div class="erro" id="erro" role="alert" hidden></div>
+
+    <div class="colunas situacao" id="situacao" data-farol="verde">
+      <section class="secao" aria-labelledby="t-situacao">
+        <header><h2 id="t-situacao">Situação agora</h2></header>
+        <div class="farol-linha">
+          <span class="lampadas" id="farol" role="img" aria-label="Farol carregando">
+            <i data-cor="verde"></i><i data-cor="amarelo"></i><i data-cor="vermelho"></i>
+          </span>
+          <span class="farol-nome" id="farol-nome">—</span>
+          <span class="farol-legenda" id="farol-legenda"></span>
+        </div>
+        <p class="frase" id="frase" aria-live="polite">Lendo o que aconteceu nas últimas 24 horas…</p>
+        <p class="autoria" id="autoria" hidden></p>
+      </section>
+
+      <section class="secao" aria-labelledby="t-indice">
+        <header><h2 id="t-indice">Índice de risco</h2><p>últimas 24 horas</p></header>
+        <div class="indice-numero"><b id="indice">0</b><span>de 100</span></div>
+        <div class="trilho-indice" aria-hidden="true"><span id="barra"></span></div>
+        <div class="escala" aria-hidden="true"><span>0</span><span>50</span><span>100</span></div>
+        <p class="indice-nota">Cada dado barrado numa saída pesa 3; cada dado marcado na entrada pesa 1. CPF, RG, senha e saúde valem mais que telefone e e-mail.</p>
+      </section>
+    </div>
+
+    <section class="secao" aria-labelledby="t-caminho">
+      <header><h2 id="t-caminho">Por onde a informação tentou passar</h2><p>a entrada marca; as quatro saídas barram</p></header>
+      <ul class="caminho" id="caminho"></ul>
+    </section>
+
+    <div class="colunas metade">
+      <section class="secao" aria-labelledby="t-tipos">
+        <header><h2 id="t-tipos">Tipos de informação</h2><p>quantas vezes cada um apareceu</p></header>
+        <div id="tipos"><p class="vazio">Nenhuma informação sensível ainda.</p></div>
+      </section>
+      <section class="secao" aria-labelledby="t-regras">
+        <header><h2 id="t-regras">Como ler o farol</h2></header>
+        <dl class="dados">
+          <div><dt><i style="background:var(--verde)" aria-hidden="true"></i>Verde</dt><dd>Nenhum dado sensível nas últimas 24 horas.</dd></div>
+          <div><dt><i style="background:var(--silencio)" aria-hidden="true"></i>Amarelo</dt><dd>Um dado sensível chegou e foi marcado, e nada tentou sair com ele.</dd></div>
+          <div><dt><i style="background:var(--ajuda)" aria-hidden="true"></i>Vermelho</dt><dd>O dado tentou sair por log, banco, resposta da API ou IA, e foi barrado.</dd></div>
+        </dl>
+      </section>
+    </div>
+
+    <section class="secao" aria-labelledby="t-eventos">
+      <header><h2 id="t-eventos">Últimos eventos</h2><p id="contagem"></p></header>
+      <div id="eventos"></div>
+    </section>
+
+    <footer class="rodape">
+      <p>Atualiza sozinho a cada 3 segundos. A explicação de cada evento é escrita por IA (Claude) a partir só da descrição técnica, sem o dado; sem IA, entra uma mensagem pronta.</p>
+      <nav aria-label="Documentação"><a href="/swagger">Swagger</a><a href="/scalar">Scalar</a><a href="/api/seguranca/painel">JSON do painel</a></nav>
+    </footer>
+  </main>
+
+  <script>
+    const INTERVALO_MS = 3000;
+
+    // O farol sempre tem cor, ícone E texto: ninguém depende só de enxergar a cor.
+    const FAROIS = {
+      verde:    { nome: "Verde",    legenda: "tudo em ordem" },
+      amarelo:  { nome: "Amarelo",  legenda: "dado sensível chegou e foi marcado" },
+      vermelho: { nome: "Vermelho", legenda: "saída bloqueada" }
+    };
+
+    const TIPOS = {
+      cpf: "CPF", rg: "RG", cartaoSus: "Cartão do SUS", email: "E-mail",
+      telefone: "Telefone", senha: "Senha", dadoDeSaude: "Saúde", nome: "Nome"
+    };
+
+    const SAIDAS = {
+      Banco: "gravação no banco", Log: "registro do sistema", RespostaHttp: "resposta da API", Llm: "envio à IA"
+    };
+
+    const GRAVIDADES = { Alta: "gravidade alta", Media: "gravidade média", Baixa: "gravidade baixa" };
+
+    const AUTORES = { claude: "Escrito pelo Claude (IA)", gemini: "Escrito pelo Gemini (IA)" };
+
+    const CAMINHO = [
+      { chave: "entrada", rotulo: "Entrada", icone: "i-entrada", detalhe: "o dado chegou e foi marcado", entrada: true },
+      { chave: "banco", rotulo: "Banco", icone: "i-banco", detalhe: "não foi gravado" },
+      { chave: "log", rotulo: "Registros", icone: "i-registro", detalhe: "não foi para o log" },
+      { chave: "respostaHttp", rotulo: "Respostas", icone: "i-resposta", detalhe: "não saiu na API" },
+      { chave: "llm", rotulo: "IA", icone: "i-ia", detalhe: "não foi enviado ao LLM" }
+    ];
+
+    const $ = (id) => document.getElementById(id);
+
+    // Cria elementos com textContent: o que vem da API nunca vira HTML.
+    function el(tag, atributos, ...filhos) {
+      const no = document.createElement(tag);
+      for (const [chave, valor] of Object.entries(atributos || {})) {
+        if (valor === undefined || valor === null || valor === false) continue;
+        if (chave === "class") no.className = valor;
+        else no.setAttribute(chave, valor === true ? "" : valor);
+      }
+      for (const filho of filhos.flat()) {
+        if (filho === null || filho === undefined || filho === false) continue;
+        no.append(filho instanceof Node ? filho : document.createTextNode(String(filho)));
+      }
+      return no;
+    }
+
+    // Ícone do sprite lá de cima, clonado do molde.
+    function icone(id) {
+      const svg = $("molde-icone").content.firstElementChild.cloneNode(true);
+      svg.querySelector("use").setAttribute("href", `#${id}`);
+      return svg;
+    }
+
+    const minuscula = (texto) => texto.charAt(0).toLowerCase() + texto.slice(1);
+    const rotuloDoTipo = (tipo) => TIPOS[minuscula(tipo)] ?? tipo;
+    const hora = (iso) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const dataHora = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const relativo = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+    function haQuanto(iso) {
+      const segundos = Math.round((new Date(iso) - Date.now()) / 1000);
+      if (segundos > -45) return "agora há pouco";
+      const minutos = Math.round(segundos / 60);
+      if (minutos > -60) return relativo.format(minutos, "minute");
+      return relativo.format(Math.round(minutos / 60), "hour");
+    }
+    const autoria = (quem) => AUTORES[quem] ?? (quem ? "Mensagem pronta (sem IA)" : null);
+
+    function trocarTexto(no, texto) {
+      // Só troca quando muda: o leitor de tela não repete a frase a cada 3 segundos.
+      if (no.textContent !== texto) no.textContent = texto;
+    }
+
+    function desenharSituacao(painel) {
+      const chave = FAROIS[String(painel.farol).toLowerCase()] ? String(painel.farol).toLowerCase() : "verde";
+      const farol = FAROIS[chave];
+      $("situacao").dataset.farol = chave;
+      $("farol").setAttribute("aria-label", `Farol ${farol.nome}: ${farol.legenda}`);
+      for (const lampada of $("farol").children) lampada.classList.toggle("acesa", lampada.dataset.cor === chave);
+      trocarTexto($("farol-nome"), farol.nome);
+      trocarTexto($("farol-legenda"), farol.legenda);
+
+      const indice = Math.min(100, Math.max(0, Number(painel.indice) || 0));
+      trocarTexto($("indice"), String(indice));
+      $("barra").style.setProperty("--indice", `${indice}%`);
+
+      trocarTexto($("frase"), painel.resumo);
+
+      // Quem escreveu a frase de cima: a do evento de onde ela veio.
+      const origem = (painel.ultimosEventos || []).find((e) => e.mensagemAoCidadao === painel.resumo);
+      const texto = origem ? autoria(origem.traduzidaPor) : null;
+      $("autoria").hidden = !texto;
+      if (texto) $("autoria").replaceChildren(icone("i-ia"), texto);
+    }
+
+    function desenharCaminho(totais) {
+      $("caminho").replaceChildren(...CAMINHO.map((c) => {
+        const n = totais[c.chave] ?? 0;
+        const estado = n === 0 ? "nada por aqui" : c.entrada ? "marcado" : n === 1 ? "barrado 1 vez" : `barrado ${n} vezes`;
+        return el("li", { class: [n > 0 ? "ativo" : null, c.entrada ? "entrada" : null].filter(Boolean).join(" ") || null },
+          el("span", { class: "nome" }, icone(c.icone), c.rotulo),
+          el("b", {}, n),
+          el("span", { class: "estado" }, estado),
+          el("span", { class: "detalhe" }, c.detalhe));
+      }));
+    }
+
+    function desenharTipos(porTipo) {
+      const itens = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
+      if (!itens.length) {
+        $("tipos").replaceChildren(el("p", { class: "vazio" }, "Nenhuma informação sensível ainda."));
+        return;
+      }
+      const maior = Math.max(...itens.map(([, n]) => n));
+      $("tipos").replaceChildren(el("ul", { class: "barras" }, itens.map(([tipo, n]) => {
+        const barra = el("span", {});
+        barra.style.width = `${Math.round((n / maior) * 100)}%`;
+        return el("li", {},
+          el("span", { class: "rotulo" }, rotuloDoTipo(tipo)),
+          el("span", { class: "trilho", "aria-hidden": "true" }, barra),
+          el("span", { class: "valor" }, n));
+      })));
+    }
+
+    function desenharEvento(e) {
+      const saiu = e.etapa === "Saida";
+      const lugar = saiu ? `Barrado: ${SAIDAS[e.sink] ?? e.sink}` : "Marcado na entrada";
+      const quem = autoria(e.traduzidaPor);
+      return el("li", { class: "evento" },
+        el("div", { class: "quando" },
+          el("b", { title: dataHora(e.ocorridoEm) }, hora(e.ocorridoEm)),
+          el("span", {}, haQuanto(e.ocorridoEm))),
+        el("div", {},
+          el("p", { class: "ocorrido", style: "margin:0" },
+            el("span", { class: `situacao-tag${saiu ? "" : " entrada"}` }, icone(saiu ? "i-escudo" : "i-entrada"), lugar),
+            el("span", { class: "tipos" }, e.tipos.map(rotuloDoTipo).join(", ")),
+            el("span", { class: "gravidade" }, GRAVIDADES[e.severidade] ?? e.severidade)),
+          el("div", { class: "lado-a-lado" },
+            el("div", { class: "tecnica" }, el("h3", {}, "Falha técnica"), el("p", {}, e.descricaoTecnica)),
+            el("div", { class: "leigo" },
+              el("h3", {}, "O que o cidadão lê"),
+              e.mensagemAoCidadao
+                ? el("p", {}, e.mensagemAoCidadao)
+                : el("p", { class: "pendente" }, "Escrevendo a explicação…"),
+              quem ? el("p", { class: "autoria" }, icone("i-ia"), quem) : null))));
+    }
+
+    function desenharEventos(eventos) {
+      trocarTexto($("contagem"), eventos.length ? `${eventos.length} ${eventos.length === 1 ? "evento" : "eventos"}, do mais recente` : "");
+      $("eventos").replaceChildren(eventos.length
+        ? el("ol", { class: "eventos" }, eventos.map(desenharEvento))
+        : el("p", { class: "vazio" }, "Nenhum evento nas últimas 24 horas. Quando alguém enviar um dado sensível, ele aparece aqui."));
+    }
+
+    function mostrarErro(mostrar) {
+      const caixa = $("erro");
+      $("ao-vivo").classList.toggle("parado", mostrar);
+      // Só mexe quando o estado muda: com a API fora do ar, reescrever o alerta a cada 3 s faria o leitor de tela repetir o aviso sem parar.
+      if (caixa.hidden === !mostrar) return;
+      caixa.hidden = !mostrar;
+      if (!mostrar) { caixa.replaceChildren(); return; }
+      caixa.replaceChildren(icone("i-alerta"),
+        el("p", {}, "A API não respondeu.", el("span", {}, "Os números são da última leitura. Vou tentar de novo em instantes.")));
+    }
+
+    async function carregar() {
+      try {
+        const resposta = await fetch("/api/seguranca/painel", { headers: { Accept: "application/json" } });
+        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+        const painel = await resposta.json();
+
+        desenharSituacao(painel);
+        desenharCaminho(painel.totais);
+        desenharTipos(painel.porTipo);
+        desenharEventos(painel.ultimosEventos);
+        mostrarErro(false);
+        requestAnimationFrame(() => document.body.classList.add("pronto"));
+        trocarTexto($("atualizado"), `Ao vivo · ${new Date().toLocaleTimeString("pt-BR")}`);
+      } catch {
+        mostrarErro(true);
+        trocarTexto($("atualizado"), "Sem conexão");
+      } finally {
+        $("conteudo").setAttribute("aria-busy", "false");
+        setTimeout(carregar, INTERVALO_MS); // espera terminar para só então marcar a próxima (sem pedidos acumulados)
+      }
+    }
+
+    // Tema: alterna e guarda a escolha neste navegador (como o botão do painel admin).
+    function temaAtual() {
+      const definido = document.documentElement.dataset.theme;
+      if (definido) return definido === "dark" ? "escuro" : "claro";
+      return matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro";
+    }
+    function mostrarBotaoDoTema() {
+      const escuro = temaAtual() === "escuro";
+      const botao = $("tema");
+      botao.setAttribute("aria-label", escuro ? "Mudar para tema claro" : "Mudar para tema escuro");
+      botao.title = escuro ? "Tema claro" : "Tema escuro";
+      botao.replaceChildren(icone(escuro ? "i-sol" : "i-lua"));
+    }
+    $("tema").addEventListener("click", () => {
+      const novo = temaAtual() === "escuro" ? "claro" : "escuro";
+      document.documentElement.dataset.theme = novo === "escuro" ? "dark" : "light";
+      try { localStorage.setItem("elo-tema", novo); } catch (e) {}
+      mostrarBotaoDoTema();
+    });
+
+    mostrarBotaoDoTema();
+    carregar();
+  </script>
+</body>
+</html>

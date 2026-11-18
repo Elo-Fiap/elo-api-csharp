@@ -1,0 +1,291 @@
+
+== Elo, módulo de Cybersecurity: demonstração ==
+API: http://localhost:5080    painel visual: http://localhost:5080/risco-cidadao.html
+Deixe a página do painel aberta ao lado: ela atualiza sozinha a cada 3 segundos.
+
+== Painel Risco Cidadão  (GET /api/seguranca/painel) ==
+{
+  "farol": "Verde",
+  "indice": 0,
+  "resumo": "Tudo certo: nenhuma informação sensível foi enviada ao Elo nas últimas horas.",
+  "totais": {
+    "entrada": 0,
+    "banco": 0,
+    "log": 0,
+    "respostaHttp": 0,
+    "llm": 0
+  },
+  "porTipo": {},
+  "ultimosEventos": []
+}
+
+
+== (a) POST /chamadas: "Preciso de ajuda" com CPF, RG, senha, doença e nome ==
+Observação enviada: Sra. Maria Souza, CPF 123.456.789-00, RG 12.345.678-9, senha: abc12345. Ela é diabética e está sozinha.
+{
+  "id": "demo-a-1794971837",
+  "ruaId": "6",
+  "status": "preciso_ajuda",
+  "pessoas": 1,
+  "observacao": "Sra. [nome oculto], CPF [CPF removido], RG [RG oculto], senha: [senha oculta]. Ela é [dado de saúde oculto] e está sozinha.",
+  "criadaEm": "2026-11-18T03:17:18.000Z",
+  "recebidaEm": "2026-11-18T03:17:18.297Z"
+}
+
+A resposta acima já volta sem o CPF, o RG, a senha, o nome e a doença.
+No terminal da API: a linha "Pedido de ajuda na rua 6..." saiu com os dados escondidos.
+
+== Painel Risco Cidadão  (GET /api/seguranca/painel) ==
+{
+  "farol": "Vermelho",
+  "indice": 84,
+  "resumo": "O Elo barrou tentativas de mostrar ou gravar informações delicadas. Os dados continuam protegidos.",
+  "totais": {
+    "entrada": 1,
+    "banco": 1,
+    "log": 1,
+    "respostaHttp": 0,
+    "llm": 0
+  },
+  "porTipo": {
+    "cpf": 2,
+    "rg": 3,
+    "senha": 3,
+    "dadoDeSaude": 3,
+    "nome": 3
+  },
+  "ultimosEventos": [
+    {
+      "etapa": "Saida",
+      "sink": "Log",
+      "tipos": [
+        "Cpf",
+        "Rg",
+        "Nome",
+        "DadoDeSaude",
+        "Senha"
+      ],
+      "onde": "Elo.Application.ContratoDoApp.ContratoDoAppService",
+      "descricaoTecnica": "Taint sink bloqueado: Cpf, Rg, Nome, DadoDeSaude, Senha em Log (Elo.Application.ContratoDoApp.ContratoDoAppService)",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Saida",
+      "sink": "Banco",
+      "tipos": [
+        "Rg",
+        "Nome",
+        "DadoDeSaude",
+        "Senha"
+      ],
+      "onde": "Resposta.Observacao",
+      "descricaoTecnica": "Taint sink bloqueado: Rg, Nome, DadoDeSaude, Senha em Banco (Resposta.Observacao)",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Entrada",
+      "sink": null,
+      "tipos": [
+        "Nome",
+        "Cpf",
+        "Rg",
+        "Senha",
+        "DadoDeSaude"
+      ],
+      "onde": "POST /chamadas",
+      "descricaoTecnica": "Parsing de PII na entrada: Nome, Cpf, Rg, Senha, DadoDeSaude marcados em POST /chamadas",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    }
+  ]
+}
+
+
+== (b) JSON com chaves que a API não conhece: documento e senha ==
+Corpo: {"idLocal":...,"situacao":"TudoBem","documento":"123.456.789-00","senha":"abc12345"}
+{
+  "id": 139,
+  "idLocal": "demo-b-1794971837",
+  "chamadaId": 2,
+  "ruaId": 6,
+  "situacao": "TudoBem",
+  "pessoas": null,
+  "observacao": null,
+  "canal": "App",
+  "respondidaEm": "2026-11-18T03:17:19.36182Z",
+  "recebidaEm": "2026-11-18T03:17:19.36182Z"
+}
+
+O interceptador de entrada reconheceu o CPF (mesmo com dígito verificador inválido) e a senha pelo nome das chaves e marcou os dois.
+
+== Painel Risco Cidadão  (GET /api/seguranca/painel) ==
+{
+  "farol": "Vermelho",
+  "indice": 96,
+  "resumo": "O Elo barrou tentativas de mostrar ou gravar informações delicadas. Os dados continuam protegidos.",
+  "totais": {
+    "entrada": 2,
+    "banco": 1,
+    "log": 1,
+    "respostaHttp": 0,
+    "llm": 0
+  },
+  "porTipo": {
+    "cpf": 3,
+    "rg": 3,
+    "senha": 4,
+    "dadoDeSaude": 3,
+    "nome": 3
+  },
+  "ultimosEventos": [
+    {
+      "etapa": "Entrada",
+      "sink": null,
+      "tipos": [
+        "Cpf",
+        "Senha"
+      ],
+      "onde": "POST /api/chamadas/{id}/respostas",
+      "descricaoTecnica": "Parsing de PII na entrada: Cpf, Senha marcados em POST /api/chamadas/{id}/respostas",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Saida",
+      "sink": "Log",
+      "tipos": [
+        "Cpf",
+        "Rg",
+        "Nome",
+        "DadoDeSaude",
+        "Senha"
+      ],
+      "onde": "Elo.Application.ContratoDoApp.ContratoDoAppService",
+      "descricaoTecnica": "Taint sink bloqueado: Cpf, Rg, Nome, DadoDeSaude, Senha em Log (Elo.Application.ContratoDoApp.ContratoDoAppService)",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Saida",
+      "sink": "Banco",
+      "tipos": [
+        "Rg",
+        "Nome",
+        "DadoDeSaude",
+        "Senha"
+      ],
+      "onde": "Resposta.Observacao",
+      "descricaoTecnica": "Taint sink bloqueado: Rg, Nome, DadoDeSaude, Senha em Banco (Resposta.Observacao)",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Entrada",
+      "sink": null,
+      "tipos": [
+        "Nome",
+        "Cpf",
+        "Rg",
+        "Senha",
+        "DadoDeSaude"
+      ],
+      "onde": "POST /chamadas",
+      "descricaoTecnica": "Parsing de PII na entrada: Nome, Cpf, Rg, Senha, DadoDeSaude marcados em POST /chamadas",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    }
+  ]
+}
+
+
+== (c) Dado legado: gravado direto no SQLite, sem passar pela API ==
+sqlite3: UPDATE Respostas SET Observacao = 'CPF 123.456.789-00, vizinha diabética' ...
+No banco, o dado está lá, em texto puro:
+demo-c-1794971837|CPF 123.456.789-00, vizinha diabética
+
+Agora a API lê a mesma resposta (GET /api/chamadas/2/respostas):
+{
+  "idLocal": "demo-c-1794971837",
+  "observacao": "CPF ***.456.***-00, vizinha [dado de saúde oculto]"
+}
+A guarda de saída (resposta HTTP) barrou o dado antes de ele sair. Esse é o evento vermelho de "resposta da API".
+
+== Painel Risco Cidadão  (GET /api/seguranca/painel) ==
+{
+  "farol": "Vermelho",
+  "indice": 100,
+  "resumo": "O Elo barrou tentativas de mostrar ou gravar informações delicadas. Os dados continuam protegidos.",
+  "totais": {
+    "entrada": 2,
+    "banco": 1,
+    "log": 1,
+    "respostaHttp": 1,
+    "llm": 0
+  },
+  "porTipo": {
+    "cpf": 4,
+    "rg": 3,
+    "senha": 4,
+    "dadoDeSaude": 4,
+    "nome": 3
+  },
+  "ultimosEventos": [
+    {
+      "etapa": "Saida",
+      "sink": "RespostaHttp",
+      "tipos": [
+        "Cpf",
+        "DadoDeSaude"
+      ],
+      "onde": "GET /api/chamadas/{id}/respostas",
+      "descricaoTecnica": "Taint sink bloqueado: Cpf, DadoDeSaude em RespostaHttp (GET /api/chamadas/{id}/respostas)",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Entrada",
+      "sink": null,
+      "tipos": [
+        "Cpf",
+        "Senha"
+      ],
+      "onde": "POST /api/chamadas/{id}/respostas",
+      "descricaoTecnica": "Parsing de PII na entrada: Cpf, Senha marcados em POST /api/chamadas/{id}/respostas",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Saida",
+      "sink": "Log",
+      "tipos": [
+        "Cpf",
+        "Rg",
+        "Nome",
+        "DadoDeSaude",
+        "Senha"
+      ],
+      "onde": "Elo.Application.ContratoDoApp.ContratoDoAppService",
+      "descricaoTecnica": "Taint sink bloqueado: Cpf, Rg, Nome, DadoDeSaude, Senha em Log (Elo.Application.ContratoDoApp.ContratoDoAppService)",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    },
+    {
+      "etapa": "Saida",
+      "sink": "Banco",
+      "tipos": [
+        "Rg",
+        "Nome",
+        "DadoDeSaude",
+        "Senha"
+      ],
+      "onde": "Resposta.Observacao",
+      "descricaoTecnica": "Taint sink bloqueado: Rg, Nome, DadoDeSaude, Senha em Banco (Resposta.Observacao)",
+      "mensagemAoCidadao": null,
+      "traduzidaPor": null
+    }
+  ]
+}
+
+== Fim. Abra http://localhost:5080/risco-cidadao.html para ver o farol, o índice e a mensagem ao cidadão. ==
