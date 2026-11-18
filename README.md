@@ -87,8 +87,11 @@ Na primeira execução a API aplica as migrations, cria o arquivo `src/Elo.Api/e
 | http://localhost:5080/swagger | Documentação e testes no **Swagger UI** |
 | http://localhost:5080/scalar | A mesma documentação no **Scalar** |
 | http://localhost:5080/openapi/v1.json | Documento OpenAPI 3.1 |
-| http://localhost:5080/ | Página simples do resumo do bairro (para a VM de Sistemas Operacionais) |
+| http://localhost:5080/ | Resumo do bairro com a cara do Elo: chamada aberta, ruas por prioridade e a última leitura da régua |
+| http://localhost:5080/risco-cidadao.html | Painel **Risco Cidadão** (Cybersecurity): farol, índice de risco e as falhas traduzidas para o cidadão |
 | http://localhost:5080/health | Saúde da API e do banco |
+
+A mesma API está publicada na internet em **http://elo-api-fiap.azurewebsites.net**, com as mesmas rotas (veja "Endereço público da entrega" abaixo).
 
 O arquivo [`src/Elo.Api/Elo.Api.http`](src/Elo.Api/Elo.Api.http) tem o roteiro de requisições pronto para o Visual Studio, Rider ou VS Code (REST Client).
 Para começar do zero, pare a API e apague `src/Elo.Api/elo.db`.
@@ -119,14 +122,42 @@ dotnet publish src/Elo.Api -c Release -o publicar
 ASPNETCORE_URLS=http://0.0.0.0:5080 Dispositivos__Chave=<chave-da-regua> dotnet publicar/Elo.Api.dll
 ```
 
+**Endereço público da entrega (Azure App Service):** http://elo-api-fiap.azurewebsites.net
+
+A régua no Wokwi envia em HTTP puro: com HTTPS, o envio no ESP32 simulado leva cerca de 7 segundos e falha
+com o buzzer tocando. Por isso o App Service fica com o **HTTPS Only desligado** e aceita `http://` sem
+redirecionar. Render, Railway, Vercel e similares redirecionam tudo para HTTPS e não servem para a régua.
+
+- Plano gratuito F1 (Linux, Brazil South), na assinatura Azure for Students. Ele dorme quando fica parado:
+  a primeira chamada depois disso leva alguns segundos.
+- Configurações do App Service: `Dispositivos__Chave` (chave só de demonstração, trocada depois da entrega),
+  `ConnectionStrings__Elo=Data Source=/home/elo.db` (o `/home` é a pasta que sobrevive a reinícios e
+  publicações) e `ASPNETCORE_ENVIRONMENT=Production`, para a API nunca aceitar leitura sem chave.
+- Não precisa de banco à parte: o SQLite e os dados de exemplo são criados na primeira execução.
+
+Para publicar uma versão nova (com o Azure CLI logado na assinatura):
+
+```bash
+dotnet publish src/Elo.Api -c Release -o publicar && (cd publicar && zip -qr ../elo-api.zip .)
+```
+
+```bash
+az webapp deploy -g elo-rg -n elo-api-fiap --src-path elo-api.zip --type zip
+```
+
+Conferir de fora: `GET /health` responde 200; `POST /leituras` com o header `X-Chave-Dispositivo` e o corpo
+`{"reguaId":"regua-exemplo","nivelMetros":1.42}` responde 204 (sem a chave, 401); `GET /regua` devolve 1.42.
+
 ## Ligar o app e a régua (ESP32)
 
 **App (`elo-app`).** O app chama `EXPO_PUBLIC_API_URL` + `/situacao`, `/chamadas`, `/regua` e `/ruas/{id}/plano`.
 Basta apontar para a API, sem `/api` no final:
 
 ```bash
-EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:5080
+EXPO_PUBLIC_API_URL=http://elo-api-fiap.azurewebsites.net
 ```
+
+Com a API rodando no computador, use `http://<ip-da-maquina>:5080` (o celular não alcança `localhost`).
 
 A resposta da liderança só entra se houver **chamada aberta** no bairro (o coordenador abre pelo Swagger:
 `POST /api/bairros/1/chamadas`). Nos dados simulados já existe uma aberta. O bairro atendido pelas rotas do app é o
@@ -464,7 +495,7 @@ classDiagram
 - [`docs/evidencias/resultado-dos-testes.txt`](docs/evidencias/resultado-dos-testes.txt): os 154 testes aprovados.
 - [`docs/evidencias/cyber-demo.txt`](docs/evidencias/cyber-demo.txt): a saída do roteiro de demonstração do módulo de Cybersecurity, com as mensagens escritas pelo Claude.
 
-**Página do resumo do bairro** (a régua mostra o indicador de 15 minutos; ruas em silêncio têm o marcador vazado):
+**Página do resumo do bairro** (http://elo-api-fiap.azurewebsites.net): a chamada aberta, os números da chamada, as ruas em ordem de prioridade e a régua do bairro com o limite e o nível de atenção, com as fontes, as cores e o logo do app e do painel:
 
 ![Resumo do bairro](docs/evidencias/01-resumo-do-bairro.png)
 

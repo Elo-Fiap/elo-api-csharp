@@ -486,3 +486,7 @@ $RECYCLE.BIN/
 *.db-shm
 *.db-wal
 
+
+# Saída da publicação no Azure
+publicar/
+elo-api.zip

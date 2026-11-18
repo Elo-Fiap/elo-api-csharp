@@ -3,171 +3,255 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Elo - Resumo do bairro</title>
-  <meta name="description" content="Resumo da chamada aberta no bairro: quem pediu ajuda, quem está em silêncio e o indicador de 15 minutos.">
+  <title>Elo, resumo do bairro</title>
+  <meta name="description" content="Resumo da chamada aberta no bairro: quem pediu ajuda, quem está em silêncio, o indicador de 15 minutos e a última leitura da régua.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230E0E0E'/%3E%3Cg transform='translate(5 17) scale(1.5)' fill='none' stroke-width='4'%3E%3Crect x='2' y='2' width='21' height='18' rx='9' stroke='%23F8F8F8'/%3E%3Crect x='13' y='2' width='21' height='18' rx='9' stroke='%23FFE657'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script>
+    // Tema escolhido antes de desenhar, para não piscar. Sem escolha salva, vale a preferência do sistema.
+    try { const t = localStorage.getItem("elo-tema"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch {}
+  </script>
   <style>
+    /* Mesmas cores do painel (elo-admin) e do app: claro é o padrão, escuro pela escolha ou pelo sistema. */
     :root {
-      --papel: #f3f5f4;
-      --superficie: #ffffff;
-      --tinta: #15232b;
-      --tinta-suave: #4a5a63;
-      --linha: #d5dcdf;
-      --agua: #2f6f7e;
-      --agua-clara: #cfe3e7;
-      --sinal: #c2410c;
-      --ajuda: #b42318;
-      --subindo: #8f5400;
-      --bem: #1f7a4d;
-      --silencio: #5b6770;
-      --foco: #1d4ed8;
+      --fundo: #f6f6f3;
+      --tinta: #141414;
+      --solido: #141414;
+      --sobre-solido: #f6f6f3;
+      --apoio: #5b5b56;
+      --linha: rgba(0, 0, 0, 0.1);
+      --realce: rgba(0, 0, 0, 0.05);
+      --ajuda: #c8321e;
+      --agua: #2a67d1;
+      --silencio: #7a5200;
       color-scheme: light;
     }
-
+    :root[data-theme="dark"] {
+      --fundo: #0e0e0e;
+      --tinta: #f8f8f8;
+      --solido: #f8f8f8;
+      --sobre-solido: #0e0e0e;
+      --apoio: #b4b4b4;
+      --linha: rgba(255, 255, 255, 0.1);
+      --realce: rgba(255, 255, 255, 0.07);
+      --ajuda: #f2674f;
+      --agua: #6fa0f5;
+      --silencio: #ffe657;
+      color-scheme: dark;
+    }
     @media (prefers-color-scheme: dark) {
-      :root {
-        --papel: #10181c;
-        --superficie: #172227;
-        --tinta: #e8eef0;
-        --tinta-suave: #a9b6bc;
-        --linha: #2c3a41;
-        --agua: #5fa8b8;
-        --agua-clara: #1e3a42;
-        --sinal: #f08a4b;
-        --ajuda: #ff8a80;
-        --subindo: #f2b24c;
-        --bem: #6fd39b;
-        --silencio: #9aa8af;
-        --foco: #93c5fd;
+      :root:not([data-theme]) {
+        --fundo: #0e0e0e;
+        --tinta: #f8f8f8;
+        --solido: #f8f8f8;
+        --sobre-solido: #0e0e0e;
+        --apoio: #b4b4b4;
+        --linha: rgba(255, 255, 255, 0.1);
+        --realce: rgba(255, 255, 255, 0.07);
+        --ajuda: #f2674f;
+        --agua: #6fa0f5;
+        --silencio: #ffe657;
         color-scheme: dark;
       }
     }
 
     * { box-sizing: border-box; }
-
+    html { background: var(--fundo); }
     body {
       margin: 0;
-      background: var(--papel);
+      background: var(--fundo);
       color: var(--tinta);
-      font-family: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-      font-size: 1.0625rem;
-      line-height: 1.5;
+      font-family: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
     }
-
     a { color: inherit; text-underline-offset: 0.18em; }
-    a:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+    :focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; border-radius: 6px; }
+    .display { font-family: "Space Grotesk", system-ui, sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
 
-    .pagina { max-width: 68rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
-
-    header.topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.75rem 2rem; }
-    header.topo h1 { margin: 0; font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -0.01em; }
-    header.topo .marca { font-weight: 700; color: var(--agua); }
-    .controles { display: flex; align-items: center; gap: 0.75rem; color: var(--tinta-suave); font-size: 0.9375rem; }
-    select, button { font: inherit; color: var(--tinta); background: var(--superficie); border: 1px solid var(--linha); border-radius: 6px; padding: 0.35rem 0.6rem; }
-    button { cursor: pointer; }
-
-    .aviso-simulado { margin: 0.75rem 0 0; color: var(--tinta-suave); }
-
-    .quadro { display: grid; grid-template-columns: 11rem 1fr; gap: 2rem; margin-top: 2rem; align-items: start; }
-
-    /* A régua linimétrica: o elemento marcante da página. */
-    .regua-bloco { position: sticky; top: 1rem; }
-    .regua {
-      position: relative;
-      height: 22rem;
-      width: 5.5rem;
-      background: var(--superficie);
-      border: 2px solid var(--tinta);
-      overflow: hidden;
-    }
-    .regua .agua {
-      position: absolute;
-      inset: auto 0 0 0;
-      height: var(--nivel, 0%);
-      background: var(--agua);
-      opacity: 0.85;
-      animation: encher 1.6s cubic-bezier(.2,.7,.2,1);
-    }
-    /* A água sobe do nível anterior até o atual; o valor final já está no estilo, mesmo sem animação. */
-    @keyframes encher { from { height: var(--nivel-anterior, 0%); } }
-    .regua .faixa { position: absolute; left: 0; right: 0; height: 10%; }
-    .regua .faixa .e { position: absolute; left: 0; width: 45%; top: 0; bottom: 0; }
-    .regua .faixa.par .e { background: var(--sinal); clip-path: polygon(0 0, 100% 0, 100% 20%, 40% 20%, 40% 40%, 100% 40%, 100% 60%, 40% 60%, 40% 80%, 100% 80%, 100% 100%, 0 100%); }
-    .regua .faixa.impar .e { background: var(--tinta); clip-path: polygon(0 0, 100% 0, 100% 20%, 40% 20%, 40% 40%, 100% 40%, 100% 60%, 40% 60%, 40% 80%, 100% 80%, 100% 100%, 0 100%); }
-    .regua .faixa span { position: absolute; right: 0.4rem; top: -0.1rem; font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .regua-legenda { margin: 0.75rem 0 0; max-width: 11rem; }
-    .regua-legenda strong { display: block; font-size: 2.25rem; line-height: 1; font-variant-numeric: tabular-nums; }
-
-    .chamada h2 { margin: 0; font-size: 1.375rem; line-height: 1.3; }
-    .chamada p { margin: 0.35rem 0 0; color: var(--tinta-suave); max-width: 70ch; }
-    .chamada.treino h2::after { content: " (treino)"; color: var(--sinal); }
-
-    .contagem { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
-    .contagem li { display: flex; align-items: center; gap: 0.5rem; }
-    .contagem b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
-
-    ol.ruas { margin: 1.5rem 0 0; padding: 0; list-style: none; border-top: 2px solid var(--tinta); }
-    ol.ruas > li {
-      display: grid;
-      grid-template-columns: 2.25rem 1.25rem 1fr auto;
-      gap: 0.25rem 0.75rem;
-      align-items: start;
-      padding: 0.9rem 0.25rem;
+    /* ---------- Barra do topo ---------- */
+    .barra {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--fundo);
       border-bottom: 1px solid var(--linha);
     }
-    .posicao { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tinta-suave); }
-    .marcador { width: 1rem; height: 1rem; margin-top: 0.3rem; border-radius: 50%; background: currentColor; }
-    li.EmSilencio .marcador { background: transparent; border: 2px dashed currentColor; }
-    li.PrecisaDeAjuda { color: var(--ajuda); }
-    li.EmSilencio { color: var(--silencio); }
-    li.AguaSubindo { color: var(--subindo); }
-    li.TudoBem { color: var(--bem); }
-    .rua-nome { color: var(--tinta); font-weight: 700; font-size: 1.125rem; }
-    .rua-info { grid-column: 3 / 5; color: var(--tinta-suave); font-size: 0.9375rem; margin: 0; }
-    .rua-info .alerta { color: var(--ajuda); font-weight: 700; }
-    .status { font-weight: 700; text-align: right; white-space: nowrap; }
-    .rua-acoes { grid-column: 3 / 5; margin: 0.25rem 0 0; font-size: 0.9375rem; }
-
-    .vazio, .erro { margin-top: 2rem; padding: 1.25rem; border: 2px dashed var(--linha); max-width: 46rem; }
-    .erro { border-color: var(--ajuda); }
-    .vazio p, .erro p { margin: 0 0 0.75rem; }
-
-    footer { margin-top: 2.5rem; color: var(--tinta-suave); font-size: 0.9375rem; }
-
-    @media (max-width: 720px) {
-      .quadro { grid-template-columns: 1fr; gap: 1.25rem; }
-      .regua-bloco { position: static; display: flex; align-items: flex-end; gap: 1rem; }
-      .regua { height: 9rem; width: 4rem; }
-      ol.ruas > li { grid-template-columns: 1.75rem 1.25rem 1fr; }
-      .status { grid-column: 3; text-align: left; }
-      .rua-info, .rua-acoes { grid-column: 3; }
+    .barra-dentro {
+      display: flex; align-items: center; gap: 12px;
+      min-height: 56px; padding: 6px 16px;
+      max-width: 1200px; margin: 0 auto;
     }
+    .logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+    .logo-nome { font-family: "Space Grotesk", system-ui, sans-serif; font-weight: 700; font-size: 19px; line-height: 1; letter-spacing: -0.02em; }
+    .logo-nome span { color: var(--silencio); }
+    .barra-espaco { flex: 1; }
+    .atualizado { color: var(--apoio); font-size: 12px; white-space: nowrap; }
+    .controle {
+      font: inherit; font-size: 13px; font-weight: 600; color: var(--tinta);
+      background: transparent; border: 1px solid var(--linha); border-radius: 8px;
+      height: 32px; padding: 0 10px; cursor: pointer;
+    }
+    select.controle { max-width: 15rem; padding-right: 28px; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 9px center; }
+    select.controle option { background: var(--fundo); color: var(--tinta); }
+    .controle:hover { background: var(--realce); }
+    .botao-tema { width: 32px; padding: 0; display: inline-grid; place-items: center; }
+    .botao-tema svg { width: 15px; height: 15px; }
 
+    /* ---------- Página ---------- */
+    .pagina { max-width: 1200px; margin: 0 auto; padding: 24px 16px 40px; }
+
+    .rotulo {
+      margin: 0; font-family: "Space Grotesk", system-ui, sans-serif;
+      font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.2;
+      color: var(--apoio);
+    }
+    .rotulo .treino { color: var(--silencio); }
+
+    .abertura h1 {
+      margin: 8px 0 0; font-family: "Space Grotesk", system-ui, sans-serif;
+      font-size: clamp(44px, 9vw, 72px); font-weight: 700; line-height: 1; letter-spacing: -0.03em;
+    }
+    .abertura .texto { margin: 10px 0 0; font-size: 16px; color: var(--apoio); max-width: 60ch; }
+    .simulado { margin: 8px 0 0; font-size: 12px; color: var(--apoio); }
+    .simulado::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--silencio); margin-right: 6px; vertical-align: 1px; }
+
+    /* Números da chamada: faixa com linha em cima e linhas finas entre as colunas, sem caixa. */
+    .indicadores {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 28px 0 0; padding: 0; list-style: none;
+      border-top: 1px solid var(--linha);
+    }
+    .indicadores li { padding: 14px 12px 14px 0; border-bottom: 1px solid var(--linha); min-width: 0; }
+    .indicadores li:nth-child(2n) { padding-left: 12px; border-left: 1px solid var(--linha); }
+    .indicadores li:nth-last-child(-n+2) { border-bottom: 0; }
+    .indicadores b {
+      display: block; margin-top: 6px;
+      font-family: "Space Grotesk", system-ui, sans-serif; font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .indicadores .detalhe { display: block; margin-top: 4px; font-size: 12px; color: var(--apoio); }
+    .indicadores .ajuda b { color: var(--ajuda); }
+    .indicadores .silencio b { color: var(--silencio); }
+    .indicadores .agua b { color: var(--agua); }
+
+    .colunas { display: grid; grid-template-columns: 1fr; gap: 28px; margin-top: 28px; }
+    .secao { min-width: 0; border-top: 1px solid var(--linha); padding-top: 16px; }
+    .secao > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; margin-bottom: 10px; }
+    .secao .contador { font-size: 13px; color: var(--apoio); }
+
+    /* ---------- Ruas ---------- */
+    ol.ruas { margin: 0; padding: 0; list-style: none; }
+    ol.ruas > li { display: grid; grid-template-columns: 24px 1fr; gap: 0 10px; padding: 14px 0; border-bottom: 1px solid var(--linha); }
+    ol.ruas > li:first-child { padding-top: 4px; }
+    ol.ruas > li:last-child { border-bottom: 0; }
+    .posicao { font-family: "Space Grotesk", system-ui, sans-serif; font-weight: 600; font-size: 13px; color: var(--apoio); padding-top: 2px; font-variant-numeric: tabular-nums; }
+    .rua-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .rua-nome { font-size: 15px; font-weight: 600; line-height: 1.25; }
+    .rua-meta, .rua-obs, .rua-acoes { margin: 4px 0 0; font-size: 13px; color: var(--apoio); }
+    .rua-obs { color: var(--tinta); }
+    .rua-acoes { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+    .rua-acoes a { font-weight: 600; color: var(--tinta); }
+    .alerta { color: var(--ajuda); font-weight: 600; }
+
+    .tag { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 13px; font-weight: 600; }
+    .tag svg { width: 13px; height: 13px; flex: none; }
+    .tag.PrecisaDeAjuda, .tag.acima { color: var(--ajuda); }
+    .tag.AguaSubindo { color: var(--agua); }
+    .tag.EmSilencio, .tag.atencao { color: var(--silencio); }
+    .tag.TudoBem, .tag.normal { color: var(--apoio); }
+
+    /* ---------- Régua ---------- */
+    .regua { display: grid; grid-template-columns: 64px 1fr; gap: 18px; align-items: end; }
+    .tubo { position: relative; height: 220px; border: 1px solid var(--linha); border-radius: 10px; overflow: hidden; background: var(--realce); }
+    .tubo .agua {
+      position: absolute; inset: auto 0 0 0; height: var(--nivel, 0%);
+      background: var(--agua); opacity: 0.9;
+      transition: height 1.2s cubic-bezier(.2,.7,.2,1);
+    }
+    .tubo.acima .agua { background: var(--ajuda); }
+    .tubo .marca { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed currentColor; }
+    .tubo .marca.limite { color: var(--ajuda); }
+    .tubo.acima .marca.limite { color: var(--fundo); } /* dentro da água vermelha, o limite aparece claro */
+    .tubo .marca.atencao { color: var(--silencio); }
+    .tubo .traco { position: absolute; left: 0; width: 10px; border-top: 1px solid var(--apoio); opacity: 0.6; }
+    .regua-valor { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin: 8px 0 0; }
+    .regua-valor small { font-size: 20px; font-weight: 600; color: var(--apoio); margin-left: 4px; }
+    .legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--apoio); }
+    .legenda li::before { content: ""; display: inline-block; width: 12px; border-top: 2px dashed currentColor; margin-right: 6px; vertical-align: 3px; }
+    .legenda .limite::before { color: var(--ajuda); }
+    .legenda .atencao::before { color: var(--silencio); }
+
+    dl.dados { margin: 16px 0 0; }
+    dl.dados div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--linha); }
+    dl.dados dt { font-size: 13px; color: var(--apoio); }
+    dl.dados dd { margin: 0; font-size: 14px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+
+    .vazio { margin: 0; padding: 14px 0; color: var(--apoio); font-size: 14px; }
+    .vazio strong { display: block; color: var(--tinta); font-size: 15px; margin-bottom: 4px; }
+    .vazio code { font-size: 12px; }
+    .erro { color: var(--ajuda); }
+    .erro button { margin-top: 10px; }
+    .carregando { color: var(--apoio); padding: 24px 0; }
+
+    footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--linha); color: var(--apoio); font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; }
+    footer a { color: var(--tinta); font-weight: 600; }
+
+    @media (min-width: 640px) {
+      .indicadores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .indicadores li:nth-child(2n) { padding-left: 0; border-left: 0; }
+      .indicadores li:not(:nth-child(3n+1)) { padding-left: 14px; border-left: 1px solid var(--linha); }
+      .indicadores li:nth-last-child(-n+3) { border-bottom: 0; }
+    }
+    @media (min-width: 1024px) {
+      .barra-dentro, .pagina { padding-left: 32px; padding-right: 32px; }
+      .indicadores { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .indicadores li:nth-child(n) { border-bottom: 0; padding-left: 16px; border-left: 1px solid var(--linha); }
+      .indicadores li:first-child { padding-left: 0; border-left: 0; }
+      .colunas { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 0; border-top: 1px solid var(--linha); }
+      .colunas > .secao { border-top: 0; }
+      .colunas > .secao:first-child { padding-right: 32px; }
+      .colunas > .secao + .secao { padding-left: 32px; border-left: 1px solid var(--linha); }
+    }
+    @media (max-width: 520px) {
+      .atualizado { display: none; }
+      select.controle { max-width: 11rem; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .regua .agua { animation: none; }
+      .tubo .agua { transition: none; }
     }
   </style>
 </head>
 <body>
-  <div class="pagina">
-    <header class="topo">
-      <h1><span class="marca">Elo</span> Resumo do bairro</h1>
-      <div class="controles">
-        <label for="bairro">Bairro</label>
-        <select id="bairro"></select>
-        <span id="atualizado" aria-live="polite"></span>
-      </div>
-    </header>
-    <p class="aviso-simulado" id="simulado" hidden>Dados simulados para a Global Solution: ruas, respostas e telefones são fictícios.</p>
+  <header class="barra">
+    <div class="barra-dentro">
+      <a class="logo" href="/" aria-label="Elo, início">
+        <svg aria-hidden="true" width="33" height="20" viewBox="1 8 36 22" fill="none">
+          <rect x="3" y="10" width="21" height="18" rx="9" stroke="var(--tinta)" stroke-width="4"/>
+          <rect x="14" y="10" width="21" height="18" rx="9" stroke="var(--silencio)" stroke-width="4"/>
+        </svg>
+        <span class="logo-nome">Elo<span>.</span></span>
+      </a>
+      <span class="barra-espaco"></span>
+      <span class="atualizado num" id="atualizado" aria-live="polite"></span>
+      <label for="bairro" class="rotulo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Bairro</label>
+      <select id="bairro" class="controle"></select>
+      <button type="button" class="controle botao-tema" id="tema" aria-label="Trocar tema"></button>
+    </div>
+  </header>
 
+  <div class="pagina">
     <main id="conteudo" aria-busy="true">
-      <p>Carregando o bairro...</p>
+      <p class="carregando">Carregando o bairro...</p>
     </main>
 
     <footer>
-      Atualiza sozinho a cada 30 segundos. Documentação da API: <a href="/swagger">Swagger</a> ou <a href="/scalar">Scalar</a>. Segurança dos dados: <a href="/risco-cidadao.html">Risco Cidadão</a>.
+      <span>Resumo do bairro na API do Elo. Atualiza sozinho a cada 30 segundos.</span>
+      <span>Segurança dos dados: <a href="/risco-cidadao.html">Risco Cidadão</a> · Documentação: <a href="/swagger">Swagger</a> · <a href="/scalar">Scalar</a> · <a href="/health">Saúde</a></span>
     </footer>
   </div>
 
@@ -178,10 +262,21 @@
       AguaSubindo: "Água subindo",
       TudoBem: "Tudo bem"
     };
+    // Ícones do lucide, os mesmos do painel. São constantes: nada que vem da API vira HTML.
+    const ICONES = {
+      PrecisaDeAjuda: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+      AguaSubindo: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
+      EmSilencio: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/><path d="m2 2 20 20"/><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/>',
+      TudoBem: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+      regua: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>',
+      sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+      lua: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'
+    };
     const INTERVALO_MS = 30000;
-    let nivelAnterior = 0; // a água parte do nível anterior, para não "esvaziar" a cada atualização
+    let nivelAnterior = "0%";
     const seletor = document.getElementById("bairro");
     const conteudo = document.getElementById("conteudo");
+    const botaoTema = document.getElementById("tema");
 
     // Cria elementos com textContent: o que vem da API nunca vira HTML (a observação é texto livre).
     function el(tag, atributos, ...filhos) {
@@ -197,10 +292,48 @@
       }
       return no;
     }
+    function icone(nome) {
+      const span = document.createElement("span");
+      span.setAttribute("aria-hidden", "true");
+      span.style.display = "inline-flex";
+      span.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICONES[nome] ?? ""}</svg>`;
+      return span;
+    }
+    const tag = (classe, nomeDoIcone, texto) => el("span", { class: `tag ${classe}` }, icone(nomeDoIcone), texto);
 
-    const hora = (iso) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const numero = (valor) => Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-    const metros = (centimetros) => (Number(centimetros) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const hora = (iso) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h");
+    const dataHora = (iso) => {
+      const d = new Date(iso);
+      return `${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${hora(iso)}`;
+    };
+    const numero = (valor, casas = 1) => Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: casas });
+    const m2 = (valor) => Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const haQuanto = (iso) => {
+      const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+      if (min < 1) return "agora";
+      if (min < 60) return `há ${min} min`;
+      const h = Math.floor(min / 60);
+      return h < 48 ? `há ${h} h` : `há ${Math.floor(h / 24)} dias`;
+    };
+
+    // ---------- Tema ----------
+    function temaAtual() {
+      const escolhido = document.documentElement.dataset.theme;
+      if (escolhido) return escolhido;
+      return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    function desenharBotaoTema() {
+      const escuro = temaAtual() === "dark";
+      botaoTema.replaceChildren(icone(escuro ? "sol" : "lua"));
+      botaoTema.setAttribute("aria-label", escuro ? "Usar tema claro" : "Usar tema escuro");
+    }
+    botaoTema.addEventListener("click", () => {
+      const novo = temaAtual() === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = novo;
+      try { localStorage.setItem("elo-tema", novo); } catch {}
+      desenharBotaoTema();
+    });
+    desenharBotaoTema();
 
     async function buscar(caminho) {
       const resposta = await fetch(caminho, { headers: { Accept: "application/json" } });
@@ -212,86 +345,136 @@
       return resposta.json();
     }
 
-    function regua(percentual) {
-      const faixas = [];
-      for (let i = 9; i >= 0; i--) {
-        faixas.push(el("div", { class: `faixa ${i % 2 === 0 ? "par" : "impar"}`, style: `bottom:${i * 10}%` },
-          el("div", { class: "e" }),
-          el("span", { "aria-hidden": "true" }, (i + 1) * 10)));
-      }
-      const nivel = Math.min(100, Math.max(0, percentual));
-      const agua = el("div", { class: "agua", style: `--nivel:${nivel}%; --nivel-anterior:${nivelAnterior}%` });
-      nivelAnterior = nivel;
-      return el("div", { class: "regua-bloco" },
-        el("div", { class: "regua", role: "img", "aria-label": `${numero(percentual)}% das ruas com situação conhecida em 15 minutos` }, faixas, agua),
-        el("p", { class: "regua-legenda" }, el("strong", {}, `${numero(percentual)}%`), "das ruas com situação conhecida em 15 minutos"));
+    // ---------- Partes da página ----------
+    function abertura(painel) {
+      const ind = painel.indicador;
+      const c = painel.chamada;
+      const treino = c.tipo === "Treino";
+      const origem = c.tipo === "Real" && c.aviso
+        ? `Aberta às ${hora(c.iniciadaEm)} pelo aviso ${c.aviso.fonte}: ${c.aviso.evento}.`
+        : `Aberta às ${hora(c.iniciadaEm)}. ${treino ? "Treino: não há alerta real." : "Simulado: não há alerta real."}`;
+      return el("section", { class: "abertura", "aria-labelledby": "titulo-chamada" },
+        el("p", { class: "rotulo" }, `${painel.bairro} · `, treino ? el("span", { class: "treino" }, "Chamada de treino") : "Chamada aberta"),
+        el("h1", { id: "titulo-chamada", class: "num" }, `${ind.ruasComResposta} de ${ind.totalDeRuas}`),
+        el("p", { class: "texto" }, `ruas responderam. ${origem}`),
+        painel.dadosSimulados ? el("p", { class: "simulado" }, "Dados simulados para a Global Solution: ruas, respostas e telefones são fictícios.") : null);
     }
 
-    function descreverChamada(chamada) {
-      const inicio = `Aberta às ${hora(chamada.iniciadaEm)}`;
-      if (chamada.tipo === "Real" && chamada.aviso) {
-        return `${inicio} pelo aviso ${chamada.aviso.fonte}: ${chamada.aviso.evento}.`;
-      }
-      return `${inicio}. Simulado: não há alerta real.`;
+    function indicadores(painel) {
+      const r = painel.resumo, ind = painel.indicador;
+      const item = (classe, rotulo, valor, detalhe) =>
+        el("li", { class: classe }, el("span", { class: "rotulo" }, rotulo), el("b", {}, valor), detalhe ? el("span", { class: "detalhe" }, detalhe) : null);
+      return el("ul", { class: "indicadores", "aria-label": "Números da chamada" },
+        item("", "Em 15 minutos", `${numero(ind.percentualConhecidoEm15Min)}%`, `${ind.ruasConhecidasEm15Min} de ${ind.totalDeRuas} ruas`),
+        item("ajuda", "Pedem ajuda", r.precisamDeAjuda, `${r.pessoasPrecisandoDeAjuda} pessoas esperando`),
+        item("silencio", "Em silêncio", r.emSilencio, "sem resposta"),
+        item("agua", "Água subindo", r.aguaSubindo),
+        item("", "Tudo bem", r.tudoBem),
+        item("", "1ª resposta", ind.minutosAtePrimeiraRespostaEmMedia == null ? "—" : `${numero(ind.minutosAtePrimeiraRespostaEmMedia)} min`, "em média"));
     }
 
     function linhaDaRua(rua) {
-      const detalhes = [];
-      if (rua.status === "EmSilencio") detalhes.push("Ainda não respondeu.");
-      if (rua.ultimaRespostaEm) detalhes.push(`Respondeu às ${hora(rua.ultimaRespostaEm)}${rua.canal && rua.canal !== "App" ? ` por ${rua.canal}` : ""}.`);
-      if (rua.pessoas) detalhes.push(`${rua.pessoas} pessoa(s) precisam de ajuda.`);
-      if (rua.observacao) detalhes.push(`"${rua.observacao}"`);
+      const meta = [rua.microarea];
+      if (rua.status === "EmSilencio") meta.push("ainda não respondeu");
+      if (rua.ultimaRespostaEm) meta.push(`respondeu às ${hora(rua.ultimaRespostaEm)}${rua.canal && rua.canal !== "App" ? ` por ${rua.canal}` : ""}`);
+      if (rua.pessoas) meta.push(`${rua.pessoas} ${rua.pessoas === 1 ? "pessoa precisa" : "pessoas precisam"} de ajuda`);
 
       const sensor = rua.sensor
-        ? el("span", { class: rua.sensor.acimaDoLimite ? "alerta" : null },
-            ` Régua: ${metros(rua.sensor.nivelCm)} m (limite ${metros(rua.sensor.limiteCm)} m)${rua.sensor.acimaDoLimite ? ", acima do limite." : "."}`)
+        ? el("p", { class: "rua-meta" }, "Régua: ",
+            el("span", { class: rua.sensor.acimaDoLimite ? "alerta" : null },
+              `${m2(rua.sensor.nivelCm / 100)} m (limite ${m2(rua.sensor.limiteCm / 100)} m)${rua.sensor.acimaDoLimite ? ", acima do limite" : ""}`))
         : null;
 
       const acoes = [];
-      if (rua.atendimentoACaminho) acoes.push("Alguém da coordenação está indo até lá. ");
+      if (rua.status === "PrecisaDeAjuda") acoes.push(el("span", { class: rua.atendimentoACaminho ? null : "alerta" }, rua.atendimentoACaminho ? "Alguém a caminho" : "Ninguém a caminho"));
       if (rua.linkWhatsApp && (rua.status === "EmSilencio" || rua.status === "PrecisaDeAjuda")) {
-        acoes.push(el("a", { href: rua.linkWhatsApp, target: "_blank", rel: "noopener" }, `Chamar ${rua.rua} no WhatsApp`));
+        acoes.push(el("a", { href: rua.linkWhatsApp, target: "_blank", rel: "noopener" }, "Chamar no WhatsApp"));
       }
 
-      return el("li", { class: rua.status },
+      return el("li", {},
         el("span", { class: "posicao" }, rua.posicao),
-        el("span", { class: "marcador", "aria-hidden": "true" }),
-        el("span", { class: "rua-nome" }, rua.rua, el("span", { class: "posicao" }, ` ${rua.microarea}`)),
-        el("span", { class: "status" }, ROTULOS[rua.status] ?? rua.status),
-        el("p", { class: "rua-info" }, detalhes.join(" "), sensor),
-        acoes.length ? el("p", { class: "rua-acoes" }, acoes) : null);
+        el("div", {},
+          el("div", { class: "rua-linha" },
+            el("span", { class: "rua-nome" }, rua.rua),
+            tag(rua.status, rua.status, ROTULOS[rua.status] ?? rua.status)),
+          el("p", { class: "rua-meta" }, meta.join(" · ")),
+          rua.observacao ? el("p", { class: "rua-obs" }, `“${rua.observacao}”`) : null,
+          sensor,
+          acoes.length ? el("p", { class: "rua-acoes" }, acoes) : null));
     }
 
-    function desenharPainel(painel) {
-      const r = painel.resumo;
-      conteudo.replaceChildren(
-        el("div", { class: "quadro" },
-          regua(painel.indicador.percentualConhecidoEm15Min),
-          el("section", { "aria-labelledby": "titulo-chamada" },
-            el("div", { class: `chamada ${painel.chamada.tipo === "Treino" ? "treino" : ""}` },
-              el("h2", { id: "titulo-chamada" }, `Chamada ${painel.chamada.tipo === "Treino" ? "de treino" : "real"} em andamento`),
-              el("p", {}, descreverChamada(painel.chamada))),
-            el("ul", { class: "contagem" },
-              el("li", { class: "PrecisaDeAjuda" }, el("b", {}, r.precisamDeAjuda), "pedem ajuda"),
-              el("li", {}, el("b", {}, r.emSilencio), "em silêncio"),
-              el("li", {}, el("b", {}, r.aguaSubindo), "com água subindo"),
-              el("li", {}, el("b", {}, r.tudoBem), "tudo bem"),
-              el("li", {}, el("b", {}, r.pessoasPrecisandoDeAjuda), "pessoas esperando ajuda")),
-            el("ol", { class: "ruas", "aria-label": "Ruas em ordem de prioridade" }, painel.ruas.map(linhaDaRua)))));
+    function secaoRuas(painel) {
+      return el("section", { class: "secao", "aria-labelledby": "titulo-ruas" },
+        el("header", {},
+          el("h2", { id: "titulo-ruas", class: "rotulo" }, "Ruas por prioridade"),
+          el("span", { class: "contador num" }, `${painel.ruas.length} ${painel.ruas.length === 1 ? "rua" : "ruas"}`)),
+        el("ol", { class: "ruas", "aria-label": "Ruas, da mais urgente para a menos urgente" }, painel.ruas.map(linhaDaRua)));
     }
 
-    function desenharSemChamada(nomeDoBairro) {
-      conteudo.replaceChildren(el("div", { class: "vazio" },
-        el("p", {}, el("strong", {}, `Nenhuma chamada aberta agora em ${nomeDoBairro}.`)),
-        el("p", {}, "Quando o coordenador abrir uma chamada (POST /api/bairros/{id}/chamadas), as ruas aparecem aqui em ordem de prioridade.")));
+    // A régua que o ESP32 alimenta (POST /leituras), lida pelo mesmo GET /regua do app.
+    function secaoRegua(regua) {
+      const corpo = [];
+      if (!regua) {
+        corpo.push(el("p", { class: "vazio" }, el("strong", {}, "Sem leitura da régua."), "Quando o ESP32 enviar POST /leituras, a medida aparece aqui."));
+      } else {
+        const nivel = Number(regua.nivelMetros), limite = Number(regua.limiteMetros);
+        const atencao = regua.atencaoMetros == null ? null : Number(regua.atencaoMetros);
+        const escala = Math.max(limite * 1.5, nivel * 1.15, 0.5);
+        const pct = (v) => `${Math.min(100, Math.max(0, (v / escala) * 100))}%`;
+        const acima = nivel >= limite;
+        const emAtencao = !acima && atencao != null && nivel >= atencao;
+
+        const tracos = [];
+        for (let v = 0.5; v < escala; v += 0.5) tracos.push(el("span", { class: "traco", style: `bottom:${pct(v)}` }));
+        // A água parte do nível anterior, para não "esvaziar" a cada atualização de 30 segundos.
+        const agua = el("span", { class: "agua", style: `--nivel:${nivelAnterior}` });
+        nivelAnterior = pct(nivel);
+        const tubo = el("div", { class: `tubo ${acima ? "acima" : ""}`, role: "img", "aria-label": `Régua em ${m2(nivel)} metros, limite ${m2(limite)} metros` },
+          agua, tracos,
+          atencao != null ? el("span", { class: "marca atencao", style: `bottom:${pct(atencao)}` }) : null,
+          el("span", { class: "marca limite", style: `bottom:${pct(limite)}` }));
+        requestAnimationFrame(() => requestAnimationFrame(() => agua.style.setProperty("--nivel", pct(nivel))));
+
+        corpo.push(
+          el("div", { class: "regua" },
+            tubo,
+            el("div", {},
+              acima ? tag("acima", "regua", "Acima do limite") : emAtencao ? tag("atencao", "regua", "Em atenção") : tag("normal", "regua", "Abaixo do limite"),
+              el("p", { class: "regua-valor" }, m2(nivel), el("small", {}, "m")),
+              el("ul", { class: "legenda" },
+                el("li", { class: "limite" }, `limite ${m2(limite)} m`),
+                atencao != null ? el("li", { class: "atencao" }, `atenção ${m2(atencao)} m`) : null))),
+          el("dl", { class: "dados" },
+            el("div", {}, el("dt", {}, "Local"), el("dd", {}, regua.local)),
+            el("div", {}, el("dt", {}, "Medida em"), el("dd", {}, `${dataHora(regua.medidaEm)} (${haQuanto(regua.medidaEm)})`)),
+            el("div", {}, el("dt", {}, "Régua"), el("dd", {}, regua.reguaId))));
+      }
+      return el("section", { class: "secao", "aria-labelledby": "titulo-regua" },
+        el("header", {}, el("h2", { id: "titulo-regua", class: "rotulo" }, "Régua do bairro")),
+        corpo);
+    }
+
+    function desenhar(painel, nomeDoBairro, simulado, regua) {
+      const partes = painel
+        ? [abertura(painel), indicadores(painel)]
+        : [el("section", { class: "abertura" },
+            el("p", { class: "rotulo" }, nomeDoBairro),
+            el("h1", {}, "Sem chamada."),
+            el("p", { class: "texto" }, "Nenhuma chamada aberta agora. Quando o coordenador abrir uma, as ruas aparecem aqui em ordem de prioridade."),
+            simulado ? el("p", { class: "simulado" }, "Dados simulados para a Global Solution: ruas, respostas e telefones são fictícios.") : null)];
+      conteudo.replaceChildren(...partes,
+        el("div", { class: "colunas" },
+          painel ? secaoRuas(painel) : el("section", { class: "secao" }, el("header", {}, el("h2", { class: "rotulo" }, "Ruas por prioridade")), el("p", { class: "vazio" }, "Sem chamada aberta.")),
+          secaoRegua(regua)));
     }
 
     function desenharErro() {
-      const botao = el("button", { type: "button" }, "Tentar de novo");
+      const botao = el("button", { type: "button", class: "controle" }, "Tentar de novo");
       botao.addEventListener("click", carregar);
-      conteudo.replaceChildren(el("div", { class: "erro", role: "alert" },
-        el("p", {}, el("strong", {}, "A API não respondeu.")),
-        el("p", {}, "Confira se ela está rodando (dotnet run --project src/Elo.Api) e tente de novo."),
+      conteudo.replaceChildren(el("section", { class: "abertura", role: "alert" },
+        el("p", { class: "rotulo" }, "Sem conexão"),
+        el("h1", {}, "A API não respondeu."),
+        el("p", { class: "texto" }, "No plano gratuito ela dorme quando fica parada e leva alguns segundos para acordar. Tente de novo."),
         botao));
     }
 
@@ -300,22 +483,19 @@
       try {
         const bairros = await buscar("/api/bairros");
         if (!bairros.length) {
-          conteudo.replaceChildren(el("div", { class: "vazio" }, el("p", {}, "Nenhum bairro cadastrado. Cadastre um em POST /api/bairros.")));
+          conteudo.replaceChildren(el("p", { class: "vazio" }, el("strong", {}, "Nenhum bairro cadastrado."), "Cadastre um em POST /api/bairros."));
           return;
         }
-
         const selecionado = seletor.value;
         seletor.replaceChildren(...bairros.map((b) => el("option", { value: b.id }, b.nome)));
         seletor.value = selecionado && bairros.some((b) => String(b.id) === selecionado) ? selecionado : String(bairros[0].id);
         const bairro = bairros.find((b) => String(b.id) === seletor.value);
-        document.getElementById("simulado").hidden = !bairro.dadosSimulados;
 
-        try {
-          desenharPainel(await buscar(`/api/bairros/${bairro.id}/painel`));
-        } catch (erro) {
-          if (erro.status === 404) desenharSemChamada(bairro.nome);
-          else throw erro;
-        }
+        const [painel, regua] = await Promise.all([
+          buscar(`/api/bairros/${bairro.id}/painel`).catch((erro) => { if (erro.status === 404) return null; throw erro; }),
+          buscar("/regua").catch(() => null)
+        ]);
+        desenhar(painel, bairro.nome, bairro.dadosSimulados, regua);
 
         document.getElementById("atualizado").textContent =
           `Atualizado às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
