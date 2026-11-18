@@ -118,6 +118,32 @@ dotnet publish src/Elo.Api -c Release -o publicar
 ASPNETCORE_URLS=http://0.0.0.0:5080 Dispositivos__Chave=<chave-da-regua> dotnet publicar/Elo.Api.dll
 ```
 
+**Endereço público da entrega (Azure App Service):** http://elo-api-fiap.azurewebsites.net
+
+A régua no Wokwi envia em HTTP puro: com HTTPS, o envio no ESP32 simulado leva cerca de 7 segundos e falha
+com o buzzer tocando. Por isso o App Service fica com o **HTTPS Only desligado** e aceita `http://` sem
+redirecionar. Render, Railway, Vercel e similares redirecionam tudo para HTTPS e não servem para a régua.
+
+- Plano gratuito F1 (Linux, Brazil South), na assinatura Azure for Students. Ele dorme quando fica parado:
+  a primeira chamada depois disso leva alguns segundos.
+- Configurações do App Service: `Dispositivos__Chave` (chave só de demonstração, trocada depois da entrega),
+  `ConnectionStrings__Elo=Data Source=/home/elo.db` (o `/home` é a pasta que sobrevive a reinícios e
+  publicações) e `ASPNETCORE_ENVIRONMENT=Production`, para a API nunca aceitar leitura sem chave.
+- Não precisa de banco à parte: o SQLite e os dados de exemplo são criados na primeira execução.
+
+Para publicar uma versão nova (com o Azure CLI logado na assinatura):
+
+```bash
+dotnet publish src/Elo.Api -c Release -o publicar && (cd publicar && zip -qr ../elo-api.zip .)
+```
+
+```bash
+az webapp deploy -g elo-rg -n elo-api-fiap --src-path elo-api.zip --type zip
+```
+
+Conferir de fora: `GET /health` responde 200; `POST /leituras` com o header `X-Chave-Dispositivo` e o corpo
+`{"reguaId":"regua-exemplo","nivelMetros":1.42}` responde 204 (sem a chave, 401); `GET /regua` devolve 1.42.
+
 ## Ligar o app e a régua (ESP32)
 
 **App (`elo-app`).** O app chama `EXPO_PUBLIC_API_URL` + `/situacao`, `/chamadas`, `/regua` e `/ruas/{id}/plano`.
