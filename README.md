@@ -86,8 +86,10 @@ Na primeira execução a API aplica as migrations, cria o arquivo `src/Elo.Api/e
 | http://localhost:5080/swagger | Documentação e testes no **Swagger UI** |
 | http://localhost:5080/scalar | A mesma documentação no **Scalar** |
 | http://localhost:5080/openapi/v1.json | Documento OpenAPI 3.1 |
-| http://localhost:5080/ | Página simples do resumo do bairro (para a VM de Sistemas Operacionais) |
+| http://localhost:5080/ | Resumo do bairro com a cara do Elo: chamada aberta, ruas por prioridade e a última leitura da régua |
 | http://localhost:5080/health | Saúde da API e do banco |
+
+A mesma API está publicada na internet em **http://elo-api-fiap.azurewebsites.net**, com as mesmas rotas (veja "Endereço público da entrega" abaixo).
 
 O arquivo [`src/Elo.Api/Elo.Api.http`](src/Elo.Api/Elo.Api.http) tem o roteiro de requisições pronto para o Visual Studio, Rider ou VS Code (REST Client).
 Para começar do zero, pare a API e apague `src/Elo.Api/elo.db`.
@@ -150,8 +152,10 @@ Conferir de fora: `GET /health` responde 200; `POST /leituras` com o header `X-C
 Basta apontar para a API, sem `/api` no final:
 
 ```bash
-EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:5080
+EXPO_PUBLIC_API_URL=http://elo-api-fiap.azurewebsites.net
 ```
+
+Com a API rodando no computador, use `http://<ip-da-maquina>:5080` (o celular não alcança `localhost`).
 
 A resposta da liderança só entra se houver **chamada aberta** no bairro (o coordenador abre pelo Swagger:
 `POST /api/bairros/1/chamadas`). Nos dados simulados já existe uma aberta. O bairro atendido pelas rotas do app é o
@@ -420,7 +424,7 @@ classDiagram
 - [`docs/evidencias/fluxo-completo.md`](docs/evidencias/fluxo-completo.md): 27 requisições reais feitas contra a API rodando, em quatro partes: a API completa (painel antes e depois, reenvio offline, erros 400/404/409/422), as **rotas do contrato do app e do ESP32** (`/situacao`, `/chamadas`, `/leituras` com 401 sem chave e 204 com chave, `/regua`, `/ruas/{id}/plano`), o fim da chamada com o indicador e os **avisos reais do INMET** (148.353 bytes do INMET viraram 2.333 bytes para o município).
 - [`docs/evidencias/resultado-dos-testes.txt`](docs/evidencias/resultado-dos-testes.txt): os 154 testes aprovados.
 
-**Página do resumo do bairro** (a régua mostra o indicador de 15 minutos; ruas em silêncio têm o marcador vazado):
+**Página do resumo do bairro** (http://elo-api-fiap.azurewebsites.net): a chamada aberta, os números da chamada, as ruas em ordem de prioridade e a régua do bairro com o limite e o nível de atenção, com as fontes, as cores e o logo do app e do painel:
 
 ![Resumo do bairro](docs/evidencias/01-resumo-do-bairro.png)
 
