@@ -118,3 +118,38 @@ Decisões da IA que a equipe precisa conferir:
 - O painel e o app leem tudo desta API; o Elo Alertas tem as mesmas rotas da régua, mas os dois serviços não trocam dados.
 
 No fim, 243 testes passando. Na revisão do PR, mais 5 (248): o nível de atenção do `/regua` sempre abaixo do limite da mesma resposta, e o cache do INMET espera 1 minuto depois de falha mesmo sem lista guardada.
+
+## Módulo de Cybersecurity (CitizenTech, 18/11/2026)
+
+O professor de Cybersecurity pediu quatro coisas para a mesma entrega: (1) parsing de PII, achando CPF, RG, laudos de saúde e senhas no que entra e mascarando antes de gravar (exemplo dele: `***.456.***-00`);
+(2) taint analysis, seguindo o dado marcado da entrada até as saídas e barrando a impressão dele no log e nas respostas HTTP; (3) um LLM que traduz o bloqueio para um cidadão leigo de 60 anos em 2 frases;
+(4) um painel com farol verde, amarelo e vermelho e a mensagem traduzida. O pedido ao Claude Code foi acrescentar isso à API sem mudar nenhum contrato do app nem do painel e sem quebrar os testes existentes.
+(Este resumo não é uma citação literal do prompt.)
+
+Ferramenta: Claude Code. Com isso, a IA:
+
+- criou o projeto `Elo.Seguranca` (motor de PII com regex e validação de CPF e CNS, guarda de saída, registro de eventos em memória, calculadora do Risco Cidadão e tradutor com mensagens prontas), sem mexer no `Elo.Domain`;
+- ligou o módulo à API: um middleware de entrada que marca o dado, um provider de log que passa tudo pela guarda, um middleware de resposta e um interceptor do EF Core que mascara o que vai para o banco;
+- fez o `TradutorGemini` (chamada REST ao Gemini, com timeout e queda para as mensagens prontas) e o worker que traduz em segundo plano, com cache por assinatura do evento;
+- criou `GET /api/seguranca/painel` e `GET /api/seguranca/eventos`, a página `wwwroot/risco-cidadao.html` e o roteiro de demonstração `docs/cyber/demo.sh`;
+- escreveu os testes, incluindo os de integração que conferem que o dado não aparece no banco, no log nem nas respostas, e que o prompt enviado ao LLM não tem o dado.
+
+Decisões da IA que a equipe precisa conferir:
+
+- O dado não é reescrito na entrada: ele é só marcado, e a máscara é aplicada nas saídas. Assim o corpo que o domínio recebe não muda e nenhum contrato quebra.
+- O contato da liderança (`whatsapp`, `linkWhatsapp`, `apelido`) é isento de propósito. É um risco aceito, porque a coordenação precisa chamar a liderança.
+- Os eventos de segurança ficam em memória (sem migration) e somem quando a API reinicia.
+- Só eventos de segurança, com metadados e sem o dado, vão para o LLM. Aviso de chuva nunca passa por ele.
+- A chave do Gemini fica fora do repositório (`dotnet user-secrets` ou `Ia__Gemini__ChaveApi`). Sem ela, o painel usa mensagens prontas.
+- A chamada real ao Gemini não foi testada (os testes usam um servidor falso, sem rede): conferir uma vez com uma chave de verdade antes de gravar o vídeo.
+- As regex de telefone, CPF sem pontuação e cartão do SUS exigem fronteira de palavra: um GUID no caminho do banco, no log de inicialização, parecia telefone e deixava o farol vermelho às vezes (teste intermitente).
+
+Na revisão final, a IA corrigiu: emoji na observação derrubava o pedido de ajuda (500), porque tirar o acento de meio emoji lança exceção;
+a rota que vai para o evento, o painel e o prompt agora só guarda nomes de rota (dado pessoal no caminho vira `{id}`), e o prompt manda o modelo ignorar instruções dentro da descrição (prompt injection);
+número sem aspas em campo com nome sensível (`"pin": 1234`) também é marcado; e o aviso de "API fora do ar" do painel não é mais repetido pelo leitor de tela a cada 3 segundos.
+
+Depois, a pedido do João, o LLM passou a ser o Claude: a IA criou o `TradutorClaude` com o SDK oficial da Anthropic para C# (pacote `Anthropic`, modelo `claude-opus-5-5`,
+esforço baixo e fallback do servidor para recusas), a interface `IProvedorDeIa` para o worker não depender de um LLM só, e a opção `Ia:Provedor` (padrão `Claude`; o Gemini continua como alternativa).
+A chave fica em `Ia:Claude:ChaveApi` (user-secrets ou `Ia__Claude__ChaveApi`). A chamada real ao Claude também não foi testada: conferir com a chave antes de gravar o vídeo.
+
+No fim, 476 testes passando (os 248 anteriores, os do módulo de Cybersecurity e os de integração) e build sem avisos.

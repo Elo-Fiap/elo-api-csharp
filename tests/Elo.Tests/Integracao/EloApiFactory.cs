@@ -38,7 +38,8 @@ public class EloApiFactory : WebApplicationFactory<Program>
             ["Retencao:Habilitada"] = "false",
             ["DadosDeExemplo:IncluirBairrosDoPainel"] = "false", // os testes atuais esperam só o piloto
             ["Dispositivos:Chave"] = ChaveDeDispositivo,
-            ["Avisos:AtualizacaoAutomatica"] = "false"
+            ["Avisos:AtualizacaoAutomatica"] = "false",
+            ["Ia:Habilitada"] = "false" // nenhum teste chama o Gemini: a tradução usa as mensagens prontas
         }));
 
         // Os testes nunca acessam o INMET de verdade: a fonte de avisos é trocada por uma falsa.

@@ -103,9 +103,18 @@ public sealed class ContratoDoAppService(
             idLocal, rua, situacao, request.Pessoas, request.Observacao, CanalResposta.App, criadaEm, agora);
         await unitOfWork.SalvarAsync(cancellationToken);
 
-        // A observação não vai para o log: ela pode ter dado pessoal digitado sem querer.
+        // O log de informação não leva a observação: ela pode ter dado pessoal digitado sem querer.
         logger.LogInformation(
             "App: resposta {Status} da rua {RuaId} na chamada {ChamadaId}.", request.Status, rua.Id, chamada.Id);
+
+        // O pedido de ajuda é o que a equipe de operação precisa ler no log, com a observação como veio.
+        // Quem protege é a guarda de log do módulo de segurança (mascara CPF, saúde, senha...), não este código.
+        if (situacao == SituacaoRua.PrecisoDeAjuda)
+        {
+            logger.LogWarning(
+                "Pedido de ajuda na rua {RuaId} (chamada {ChamadaId}): {Observacao}",
+                rua.Id, chamada.Id, request.Observacao ?? "(sem observação)");
+        }
 
         return new ResultadoDeRegistro<ChamadaDoAppDto>(ParaApp(resposta), Criado: true);
     }

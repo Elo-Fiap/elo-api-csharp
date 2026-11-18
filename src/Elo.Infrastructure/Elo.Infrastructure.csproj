@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Elo.Application\Elo.Application.csproj" />
+    <ProjectReference Include="..\Elo.Seguranca\Elo.Seguranca.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Anthropic" Version="13.10.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
   </ItemGroup>
 

@@ -33,6 +33,7 @@
 - [Ligar o app e a régua (ESP32)](#ligar-o-app-e-a-régua-esp32)
 - [Endpoints](#endpoints)
 - [Painel de administração](#painel-de-administração)
+- [Módulo de Cybersecurity (CitizenTech)](#módulo-de-cybersecurity-citizentech)
 - [Arquitetura](#arquitetura)
 - [Onde cada critério da avaliação aparece](#onde-cada-critério-da-avaliação-aparece)
 - [Regras de negócio](#regras-de-negócio)
@@ -194,6 +195,8 @@ Nos dados simulados: bairro `1`, treino antigo = chamada `1`, chamada real abert
 | GET / PUT / DELETE | `/api/sensores/{id}` | Detalha, atualiza ou exclui uma régua |
 | GET / POST | `/api/sensores/{id}/leituras` | Lista as últimas leituras ou registra uma leitura (em cm) |
 | GET | `/api/sensores/{id}/leituras/{leituraId}` | Detalha uma leitura (é para cá que aponta o `Location` do 201) |
+| GET | `/api/seguranca/painel` | **Risco Cidadão**: farol, índice de 0 a 100 e a mensagem ao cidadão (veja [Módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech)) |
+| GET | `/api/seguranca/eventos` | Eventos de segurança mais recentes (`limite` de 1 a 500), só metadados |
 
 Os detalhes de campos e fluxos estão em [`docs/contrato-api.md`](docs/contrato-api.md). O painel de administração usa uma rota própria, `GET /api/admin/instantaneo` (veja [Painel de administração](#painel-de-administração)).
 
@@ -226,6 +229,54 @@ dotnet run --project src/Elo.Api
 **Créditos.** Os traçados das 8 ruas do piloto são reais, do **OpenStreetMap** (© colaboradores do OpenStreetMap, licença
 [ODbL](https://www.openstreetmap.org/copyright)), usados com os nomes fictícios da API. Os dados de bairros, ruas, réguas e chamadas são todos simulados.
 
+## Módulo de Cybersecurity (CitizenTech)
+
+Um acréscimo à API, no projeto [`src/Elo.Seguranca`](src/Elo.Seguranca): nenhum contrato do app nem do painel mudou.
+Ele protege o que as pessoas digitam sem querer na observação (CPF, RG, senha, doença, nome) em quatro passos:
+
+1. **Parsing de PII.** Um middleware lê o JSON de entrada (POST, PUT e PATCH, e também a query string) e acha CPF, RG, cartão do SUS, e-mail, telefone, senha, dado de saúde e nome
+   com regex e validação do dígito verificador. Reconhece também pelo nome da chave: um `"documento"` ou uma `"senha"` que a API nem conhece é marcado.
+   O que é achado vira **máscara** antes de ir para o banco ou para o log (`123.456.789-00` vira `***.456.***-00`).
+2. **Taint analysis.** O dado marcado na entrada é seguido até as saídas (banco, log, resposta HTTP e LLM). Uma camada, a `GuardaDeSaida`, fica antes de cada saída e troca o valor marcado pela máscara,
+   mesmo quando ele não tem cara de dado sensível. Também varre o que já estava no banco: dado antigo, gravado por fora da API, sai mascarado na resposta.
+   Cada bloqueio vira um **evento de segurança** (só tipo, quantidade e lugar, nunca o dado).
+3. **Tradução por IA.** Em segundo plano, cada evento ganha uma mensagem de duas frases para um cidadão leigo de 60 anos. O Claude (Anthropic) escreve a mensagem a partir de um prompt que só tem metadados
+   (e que também passa pela guarda). Sem chave, desligado, com erro, recusa ou timeout, entram as mensagens prontas do `TradutorPadrao`. **Aviso de chuva nunca passa por LLM.**
+4. **Painel Risco Cidadão.** Uma página com farol verde, amarelo ou vermelho (sempre com texto, não só cor), índice de 0 a 100, a frase ao cidadão e, lado a lado, a falha técnica e o que o cidadão lê.
+
+**Farol e índice.** Verde: nenhum evento nas últimas 24 horas. Amarelo: só chegou dado sensível (foi marcado, nada tentou sair). Vermelho: pelo menos uma saída foi bloqueada.
+O índice é a soma dos pontos de cada evento vezes 4, no máximo 100. Pontos = peso da severidade (média 2, alta 3; telefone e e-mail são médios, o resto é alto) x peso da etapa (entrada 1, saída 3).
+
+**Painel.** Com a API no ar, abra http://localhost:5080/risco-cidadao.html (atualiza a cada 3 segundos). Os mesmos dados saem em `GET /api/seguranca/painel` e `GET /api/seguranca/eventos`,
+documentados no Swagger e no Scalar. O roteiro para gravar o vídeo está em [`docs/cyber/demo.sh`](docs/cyber/demo.sh).
+
+**Como ligar o Claude.** O tradutor usa o SDK oficial da Anthropic para C# (pacote `Anthropic`), com o modelo `claude-opus-5-5`, esforço baixo (são duas frases)
+e o fallback do servidor ligado (se o modelo recusar, outro modelo responde na mesma chamada). A chave é da API da Anthropic (criada em platform.claude.com, cobrada por uso,
+separada da assinatura do Claude) e **não fica no repositório**: a seção `Ia` do `appsettings.json` vem com `ChaveApi` vazia. Use uma das duas formas:
+
+```bash
+dotnet user-secrets set "Ia:Claude:ChaveApi" "<sua-chave>" --project src/Elo.Api
+```
+
+```bash
+Ia__Claude__ChaveApi=<sua-chave> dotnet run --project src/Elo.Api
+```
+
+Sem chave, a API usa as mensagens prontas e o painel funciona igual. Outras opções: `Ia:Claude:Modelo` (padrão `claude-opus-5-5`; `claude-haiku-5-5` sai bem mais barato),
+`Ia:TempoLimiteEmSegundos` (padrão 20) e `Ia:Habilitada` (`false` desliga o LLM; os testes usam assim, então nenhum teste acessa a rede).
+Cada falha igual (mesma etapa, saída e tipos) chama o LLM uma vez só: a tradução fica guardada em memória.
+
+**Gemini como alternativa.** Com `Ia:Provedor` = `Gemini` e a chave em `Ia:Gemini:ChaveApi` (modelo em `Ia:Gemini:Modelo`, padrão `gemini-2.5-flash`), o Gemini faz o mesmo papel.
+Os dois implementam a interface `IProvedorDeIa`, então o worker não muda.
+
+**Limites conhecidos.**
+
+- Os eventos ficam **em memória** (os últimos 500) e somem quando a API reinicia: o painel volta a verde. Foi de propósito, para não criar tabela nem migration.
+- O **contato da liderança é isento de propósito**: `whatsapp`, `linkWhatsapp` e `apelido` são informados para a coordenação poder chamar. É um risco aceito. Telefone e e-mail também não são barrados nas respostas HTTP, a não ser que tenham chegado marcados na mesma requisição (avisos do INMET e contatos institucionais têm telefone).
+- Os **escopos de log não passam pela guarda** (`BeginScope`): só a mensagem e a exceção são limpas.
+- A API não tem login, então **toda resposta é tratada como não autenticada**.
+- O motor reconhece uns 40 termos de saúde e nomes só em frases como "meu nome é" e "Sra."; texto livre fora desses padrões pode escapar. Não é um DLP completo.
+
 ## Arquitetura
 
 Arquitetura em camadas: cada projeto só conhece o de dentro, e a Aplicação depende de **interfaces**, nunca do EF Core.
@@ -251,6 +302,7 @@ elo-api-csharp/
 │   ├── Elo.Domain/          Bairros, Ruas, Chamadas, Sensores, Painel, Comum
 │   ├── Elo.Application/     Abstracoes (interfaces), ContratoDoApp, Avisos, serviços e DTOs por assunto
 │   ├── Elo.Infrastructure/  Persistencia (DbContext, Configuracoes, Migrations), Repositorios, Avisos (INMET), Servicos
+│   ├── Elo.Seguranca/       Pii, Taint, Eventos, Traducao, Risco (módulo de Cybersecurity, sem ASP.NET)
 │   └── Elo.Api/             Controllers, Configuracao, wwwroot, Elo.Api.http
 ├── tests/Elo.Tests/         Unitarios/Dominio, Unitarios/Aplicacao, Integracao
 └── docs/                    contrato-api.md e evidencias/
@@ -417,7 +469,7 @@ classDiagram
 - Sem chamada aberta, `POST /chamadas` devolve 422 e o app deixa a resposta pendente para tentar de novo. Abrir a chamada é papel do coordenador (`/api/bairros/{id}/chamadas`).
 - **Os PUT trocam o registro inteiro.** Em `PUT /api/bairros/{id}`, deixar de fora `uf`, `codigoIbge`, as coordenadas ou o `percentualSemApp` apaga esses campos; em `PUT /api/sensores/{id}`, deixar de fora `atencaoCm` apaga o nível de atenção. Quem edita manda o registro todo, como ele veio no GET.
 - **Posição de rua e de régua só pela semente.** Não há rota para gravar a coordenada ou o traçado da rua, nem a posição da régua. Um `elo.db` criado antes da migração `PainelAdmin` fica sem mapa até ser recriado (apagar o arquivo recria tudo com os dados de exemplo, e as leituras reais se perdem).
-- O mascaramento acha CPF, telefone e e-mail; nomes e doenças ficam com o módulo de Cybersecurity da CitizenTech.
+- O mascaramento do domínio (`FiltroDeDadosPessoais`) acha CPF, telefone e e-mail na observação. Nomes, doenças, RG, cartão do SUS e senhas são tratados pelo [módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech), que também mascara o log, o banco e as respostas.
 
 ## Uso de IA
 

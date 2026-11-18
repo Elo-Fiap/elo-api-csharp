@@ -6,11 +6,14 @@
     <!-- Os comentários /// dos controllers viram a descrição dos endpoints no Swagger/Scalar. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Permite "dotnet user-secrets set": a chave do Gemini e a do ESP32 ficam fora do repositório. -->
+    <UserSecretsId>elo-api-csharp-citizentech</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Elo.Application\Elo.Application.csproj" />
     <ProjectReference Include="..\Elo.Infrastructure\Elo.Infrastructure.csproj" />
+    <ProjectReference Include="..\Elo.Seguranca\Elo.Seguranca.csproj" />
   </ItemGroup>
 
   <ItemGroup>
