@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| **Nome** | Elo (provisório) |
-| **Cidade e bairro** | São Paulo. Bairro a definir; candidato: Jardim Pantanal |
+| **Nome** | Elo |
+| **Cidade e bairro** | São Paulo, Jardim Pantanal (bairro do piloto) |
 | **Cidadão beneficiado** | Moradores de ruas que alagam, por meio da liderança da rua ou do voluntário do núcleo comunitário de Defesa Civil (NUPDEC) |
 | **Problema, em uma frase** | Durante a chuva forte, quem cuida do bairro não consegue saber quais ruas estão bem, quais precisam de ajuda e quais ficaram em silêncio. |
 | **Como funciona** | O aviso oficial chega, a liderança de cada rua responde em um toque, mesmo com internet ruim, e o coordenador vê as ruas sem resposta. Um sensor mede a água no ponto crítico. |
