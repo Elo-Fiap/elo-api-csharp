@@ -282,6 +282,9 @@ O índice é a soma dos pontos de cada evento vezes 4, no máximo 100. Pontos = 
 documentados no Swagger e no Scalar. A página segue o visual do app e do painel de administração: as mesmas cores, as fontes Manrope e Space Grotesk (servidas pela própria API,
 em `wwwroot/fontes`, sem CDN), seções sem caixa e a situação sempre escrita. Tem tema claro e escuro (segue o aparelho, com botão para trocar; `?tema=claro` ou `?tema=escuro` na URL força um deles).
 
+**Vídeo do dashboard.** O painel em atividade, gerando o indicador de Risco Cidadão (1 min 52 s): https://drive.google.com/file/d/1NfOP0IOOpODkQ8R8zRNg_oFQFvzj_ZjO/view
+A narração é a voz do João gerada por IA, a partir de uma amostra da voz dele.
+
 **Demonstração.** O roteiro para gravar o vídeo está em [`docs/cyber/demo.sh`](docs/cyber/demo.sh): com a API no ar, rode `docs/cyber/demo.sh` em outro terminal.
 Ele envia um "Preciso de ajuda" com CPF, RG, senha, doença e nome; um JSON com as chaves `documento` e `senha` (que a API nem conhece); e um dado antigo gravado direto no banco.
 Entre os passos, mostra o painel. A saída de uma execução real, com o Claude ligado, está em [`docs/evidencias/cyber-demo.txt`](docs/evidencias/cyber-demo.txt).
