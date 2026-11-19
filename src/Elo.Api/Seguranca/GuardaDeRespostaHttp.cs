@@ -14,7 +14,10 @@ namespace Elo.Api.Seguranca;
 /// </summary>
 public sealed class GuardaDeRespostaHttp(RequestDelegate proximo, GuardaDeSaida guarda)
 {
-    private static readonly string[] Prefixos = ["/openapi", "/swagger", "/scalar", "/health"];
+    // "/api/seguranca": o painel e a lista de eventos só devolvem metadados (tipo, quantidade, lugar) e o texto que o
+    // próprio sistema escreveu. Analisar esse texto fazia o painel barrar a si mesmo: a frase da IA "sua senha e ..."
+    // era lida como uma senha declarada, saía mascarada e cada leitura registrava um bloqueio novo.
+    private static readonly string[] Prefixos = ["/openapi", "/swagger", "/scalar", "/health", "/api/seguranca"];
 
     private static readonly JsonSerializerOptions Escrita = new()
     {

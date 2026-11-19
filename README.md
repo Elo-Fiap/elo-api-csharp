@@ -457,12 +457,12 @@ classDiagram
 - Camadas com dependências apontando para dentro; injeção de dependência em tudo (inclusive o relógio, via `TimeProvider`, para testar o tempo).
 - Regras de negócio no domínio, validação de entrada na borda, camada anticorrupção para o contrato do app, erros padronizados, logs estruturados **sem dado sensível** (a observação só chega ao log mascarada pela guarda do [módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech)).
 - Build sem nenhum aviso. Nomes do domínio em português, iguais aos da proposta (chamada, rua em silêncio, "Vou até lá").
-- **476 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet: 248 da API e 228 do [módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech). Os 248 da API são os 154 abaixo mais 94 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo, as rotas com os dados do piloto e com os 12 bairros, e a espera do cache do INMET depois de falha:
+- **477 testes automatizados** ([`tests/Elo.Tests`](tests/Elo.Tests)), nenhum depende de internet: 248 da API e 229 do [módulo de Cybersecurity](#módulo-de-cybersecurity-citizentech). Os 248 da API são os 154 abaixo mais 94 do painel de administração e dos campos novos do contrato: validações de UF, IBGE, coordenadas, traçado e nível de atenção, o serviço do instantâneo, as rotas com os dados do piloto e com os 12 bairros, e a espera do cache do INMET depois de falha:
   - 54 unitários do domínio (polimorfismo, janela de tempo, offline, indicador, ordem do painel, mascaramento, value objects);
   - 36 unitários da aplicação: serviços com **Moq** e relógio falso (`FakeTimeProvider`), a tradução para o formato do app e o filtro de avisos;
   - 19 unitários da infraestrutura: a leitura da resposta do INMET (com o mesmo fixture e os mesmos casos de borda dos testes do app), o cache e a ligação do Decorator na injeção de dependência;
   - 45 de integração com a API inteira (`WebApplicationFactory`) e um banco SQLite temporário por classe, incluindo as rotas do contrato, a chave do ESP32, o `/avisos` com um INMET falso e o `Location` de cada 201.
-  - 228 do módulo de Cybersecurity: o motor de PII (cada tipo, positivo e negativo, e os falsos positivos como "Rua Dona Ana" e GUID), a guarda de saída, o registro de eventos,
+  - 229 do módulo de Cybersecurity: o motor de PII (cada tipo, positivo e negativo, e os falsos positivos como "Rua Dona Ana" e GUID), a guarda de saída, o registro de eventos,
     o cálculo do farol e do índice, as mensagens prontas, os tradutores do Claude e do Gemini com um servidor falso (sem rede) e 14 de integração: o dado sensível não chega ao banco,
     ao log nem à resposta, o dado antigo sai mascarado, os contratos do app e do painel não mudam e o painel fica verde, amarelo e vermelho.
 

@@ -251,4 +251,49 @@ public class PainelDeSegurancaApiTests
         Assert.DoesNotContain(fabrica.Captura.Linhas, l => l.Contains(CenarioDeTradutor.Chave));
         Assert.DoesNotContain(CenarioDeTradutor.Chave, painel.GetRawText());
     }
+
+    [Fact]
+    public async Task O_painel_nao_barra_a_mensagem_da_ia_nem_cria_evento_ao_ser_lido()
+    {
+        using var fabrica = new FabricaComIaQueFalaDeSenha();
+        using var cliente = fabrica.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Created, (await EnviarPedidoDeAjuda(cliente)).StatusCode);
+        await EsperarTraducaoAsync(cliente, minimoDeEventos: 3);
+
+        // A frase da IA tem "senha e ...", que o motor de PII lê como uma senha declarada. Ela é texto do sistema,
+        // escrita só com metadados: o painel tem de entregar a frase inteira e não pode registrar bloqueio de si mesmo.
+        var antes = fabrica.Eventos.Listar(null, 500).Count;
+        var painel = await LerPainelAsync(cliente);
+        var lista = await (await cliente.GetAsync("/api/seguranca/eventos")).Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(antes, fabrica.Eventos.Listar(null, 500).Count);
+        Assert.Equal(0, painel.GetProperty("totais").GetProperty("respostaHttp").GetInt32());
+        Assert.Equal(FabricaComIaQueFalaDeSenha.Texto, painel.GetProperty("resumo").GetString());
+        Assert.All(painel.GetProperty("ultimosEventos").EnumerateArray(), e =>
+            Assert.Equal(FabricaComIaQueFalaDeSenha.Texto, e.GetProperty("mensagemAoCidadao").GetString()));
+        Assert.All(lista.EnumerateArray(), e =>
+            Assert.Equal(FabricaComIaQueFalaDeSenha.Texto, e.GetProperty("mensagemAoCidadao").GetString()));
+    }
+}
+
+/// <summary>Como a <see cref="FabricaComGeminiFalso"/>, mas a IA escreve "senha e ...": frase que o motor de PII confunde com uma senha.</summary>
+public class FabricaComIaQueFalaDeSenha : FabricaComCapturaDeLog
+{
+    public const string Texto = "O sistema viu que a mensagem tinha seu CPF e sua senha e protegeu os dois antes de qualquer coisa.";
+
+    internal GeminiFalso Gemini { get; } = GeminiFalso.Respondendo(Texto);
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuracao) => configuracao.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Ia:Habilitada"] = "true",
+            ["Ia:Provedor"] = "Gemini",
+            ["Ia:Gemini:ChaveApi"] = CenarioDeTradutor.Chave
+        }));
+        builder.ConfigureTestServices(servicos =>
+            servicos.AddHttpClient(TradutorGemini.NomeDoCliente).ConfigurePrimaryHttpMessageHandler(() => Gemini));
+    }
 }
